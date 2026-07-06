@@ -9,8 +9,13 @@ real CUDA `.so` binaries and run the Nuke runtime smoke test.
 - CUDA toolkit: `/usr/local/cuda`
 - Nuke installs:
   - `/opt/Nuke13.0vX`
+  - `/opt/Nuke13.1vX`
+  - `/opt/Nuke13.2vX`
   - `/opt/Nuke14.0vX`
+  - `/opt/Nuke14.1vX`
   - `/opt/Nuke15.0vX`
+  - `/opt/Nuke15.1vX`
+  - `/opt/Nuke15.2vX`
   - `/opt/Nuke16.0vX`
   - `/opt/Nuke17.0vX`
 - GitHub runner dir example: `/opt/actions-runner/tvectorblur-linux`
@@ -130,16 +135,26 @@ sudo systemctl status tvectorblur-runner.service
 `nuke-build.yml` now resolves Nuke roots from runner environment variables:
 
 - `NUKE_13_0_ROOT`
+- `NUKE_13_1_ROOT`
+- `NUKE_13_2_ROOT`
 - `NUKE_14_0_ROOT`
+- `NUKE_14_1_ROOT`
 - `NUKE_15_0_ROOT`
+- `NUKE_15_1_ROOT`
+- `NUKE_15_2_ROOT`
 - `NUKE_16_0_ROOT`
 - `NUKE_17_0_ROOT`
 
 `nuke-runtime-smoke.yml` resolves the test executable from:
 
 - `NUKE_13_0_EXECUTABLE`
+- `NUKE_13_1_EXECUTABLE`
+- `NUKE_13_2_EXECUTABLE`
 - `NUKE_14_0_EXECUTABLE`
+- `NUKE_14_1_EXECUTABLE`
 - `NUKE_15_0_EXECUTABLE`
+- `NUKE_15_1_EXECUTABLE`
+- `NUKE_15_2_EXECUTABLE`
 - `NUKE_16_0_EXECUTABLE`
 - `NUKE_17_0_EXECUTABLE`
 

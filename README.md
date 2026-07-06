@@ -17,7 +17,7 @@ Expected result:
 
 ## Compatibility
 
-- Nuke: `13.0`, `14.0`, `15.0`, `16.0`, `17.0`
+- Nuke: `13.0`, `13.1`, `13.2`, `14.0`, `14.1`, `15.0`, `15.1`, `15.2`, `16.0`, `17.0`
 - OS: Windows, Linux
 - Backend: CUDA
 
@@ -65,13 +65,23 @@ Main workflows:
 Runner environment variables expected by the self-hosted workflows:
 
 - `NUKE_13_0_ROOT`
+- `NUKE_13_1_ROOT`
+- `NUKE_13_2_ROOT`
 - `NUKE_14_0_ROOT`
+- `NUKE_14_1_ROOT`
 - `NUKE_15_0_ROOT`
+- `NUKE_15_1_ROOT`
+- `NUKE_15_2_ROOT`
 - `NUKE_16_0_ROOT`
 - `NUKE_17_0_ROOT`
 - `NUKE_13_0_EXECUTABLE`
+- `NUKE_13_1_EXECUTABLE`
+- `NUKE_13_2_EXECUTABLE`
 - `NUKE_14_0_EXECUTABLE`
+- `NUKE_14_1_EXECUTABLE`
 - `NUKE_15_0_EXECUTABLE`
+- `NUKE_15_1_EXECUTABLE`
+- `NUKE_15_2_EXECUTABLE`
 - `NUKE_16_0_EXECUTABLE`
 - `NUKE_17_0_EXECUTABLE`
 

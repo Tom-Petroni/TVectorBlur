@@ -1,10 +1,11 @@
 param(
-    [string[]]$Versions = @("13.0", "14.0", "15.0", "16.0", "17.0"),
+    [string[]]$Versions = @("13.0", "13.1", "13.2", "14.0", "14.1", "15.0", "15.1", "15.2", "16.0", "17.0"),
     [string]$Configuration = "Release",
     [string]$CudaArchitectures = "native",
     [string]$CudaRoot = "",
     [string]$Generator = "Visual Studio 17 2022",
-    [switch]$DeployToPublish
+    [switch]$DeployToPublish,
+    [switch]$RequireAllVersions
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,7 +18,12 @@ foreach ($version in $Versions) {
         Select-Object -First 1 -ExpandProperty FullName
 
     if (-not $nukeRoot) {
-        throw "Unable to find a Nuke installation for version '$version' under C:\Program Files."
+        $message = "Unable to find a Nuke installation for version '$version' under C:\Program Files."
+        if ($RequireAllVersions) {
+            throw $message
+        }
+        Write-Warning $message
+        continue
     }
 
     Write-Host ""

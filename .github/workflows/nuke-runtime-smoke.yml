@@ -6,7 +6,7 @@ on:
       nuke_versions:
         description: "Comma-separated supported Nuke minor versions"
         required: false
-        default: "13.0,14.0,15.0,16.0,17.0"
+        default: "13.0,13.1,13.2,14.0,14.1,15.0,15.1,15.2,16.0,17.0"
       include_windows:
         description: "Run on Windows self-hosted runners"
         required: false
@@ -40,7 +40,7 @@ jobs:
           import os
           import sys
 
-          supported_versions = ["13.0", "14.0", "15.0", "16.0", "17.0"]
+          supported_versions = ["13.0", "13.1", "13.2", "14.0", "14.1", "15.0", "15.1", "15.2", "16.0", "17.0"]
 
           def parse_versions(raw: str):
               if not raw:
