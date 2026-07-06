@@ -1,105 +1,76 @@
 # TVectorBlur
 
-CUDA NDK implementation of `TVectorBlur` for Nuke, packaged so one repository can build and ship binaries for multiple Nuke versions on Windows and Linux.
+CUDA vector blur node for Nuke, structured like `TBlur` with a clean split between:
 
-Current package version: `1.0.0`
+- `publish/`: the install payload copied into `.nuke`
+- `work/`: source, build tooling, smoke tests, and local package staging
 
-## Repository layout
+## Install
 
-- `src/`: NDK/CUDA sources
-- `resources/`: icon and UI resources
-- `bin/<major.minor>/<os>/<arch>/`: compiled plugin binaries picked automatically by the Python loader
-- `scripts/`: local build entry points for Windows and Linux
-- `docs/`: installation and release notes
-- `.github/workflows/build.yml`: GitHub Actions matrix for self-hosted runners
-- `.github/workflows/release.yml`: tag-driven build/package workflow for commercial release zips
+1. Copy everything from `publish/` into your `.nuke/` folder.
+2. Restart Nuke.
 
-## Important constraint
+Expected result:
 
-Nuke plugins are ABI-coupled to the Nuke SDK. That means there is not a single binary for "all Nuke versions".
+- `C:/Users/<user>/.nuke/init.py`
+- `C:/Users/<user>/.nuke/TVectorBlur/`
 
-The portable way to do this is:
+## Compatibility
 
-1. build one binary per Nuke `major.minor`
-2. store each result under `bin/<major.minor>/<os>/<arch>/`
-3. let `_plugin_loader.py` select the matching binary at runtime
+- Nuke: `13.0`, `14.0`, `15.0`, `16.0`, `17.0`
+- OS: Windows, Linux
+- Architecture: `x86_64`
+- Backend: CUDA
 
-That is exactly what this repository is prepared to do.
+Binaries are versioned in:
 
-## Local build
+`publish/TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
 
-### Windows
+## Build From Source
 
-```powershell
-./scripts/build_windows.ps1 -NukeRoot "C:\Program Files\Nuke16.0v9"
-```
-
-Optional:
-
-- `-Configuration Release|Debug`
-- `-CudaArchitectures native|89|86|...`
-- `-CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"`
-
-Build every Nuke version installed on the workstation:
+Windows:
 
 ```powershell
-./scripts/build_all_windows.ps1 -CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
+cd work
+./scripts/build_windows.ps1 -NukeRoot "C:\Program Files\Nuke16.0v9" -CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
 ```
 
-### Linux
+All installed Windows versions:
+
+```powershell
+cd work
+./build_all_windows_versions.ps1 -CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
+```
+
+Linux:
 
 ```bash
+cd work
 ./scripts/build_linux.sh /opt/Nuke16.0v9
 ```
 
-Optional:
+## CI / Releases
 
-- second arg: build type, default `Release`
-- third arg: CUDA architectures, default `native`
+Main workflows:
 
-## GitHub Actions
+- `.github/workflows/nuke-build.yml`
+- `.github/workflows/nuke-runtime-smoke.yml`
+- `.github/workflows/version-tag.yml`
 
-The workflow uses self-hosted runners because Nuke and the NDK cannot be fetched on public runners by default.
-
-Repository variables expected by the workflow:
+Repository variables expected by the build workflow:
 
 - `NUKE_13_0_ROOT`
 - `NUKE_14_0_ROOT`
 - `NUKE_15_0_ROOT`
 - `NUKE_16_0_ROOT`
-- `NUKE_15_1_ROOT`
 - `NUKE_17_0_ROOT`
-- `ENABLE_LINUX_BUILDS=true` if you want Linux jobs to run
-- `ENABLE_WINDOWS_BUILDS=false` if you want to temporarily disable Windows jobs
+- `ENABLE_LINUX_BUILDS=true` to enable Linux build jobs
+- `ENABLE_WINDOWS_BUILDS=false` to disable Windows build jobs
 
-Recommended runner labels:
+## Repository Layout
 
-- Windows runner: `self-hosted`, `windows`, `x64`, `nuke`, `cuda`
-- Linux runner: `self-hosted`, `linux`, `x64`, `nuke`, `cuda`
-
-If you want to support more versions, add another matrix entry and the corresponding repository variable.
-
-## Packaging a release
-
-Build first, then package a target:
-
-```powershell
-python ./scripts/package_release.py --target 16.0/windows/x86_64
+```text
+TVectorBlur/
+  publish/   # install payload for .nuke
+  work/      # source, native build scripts, smoke helpers
 ```
-
-The zip will be written to `dist/` and will contain only the runtime package files plus the matching binary target.
-
-Package every target already present under `bin/`:
-
-```powershell
-python ./scripts/package_all_releases.py
-```
-
-More distribution notes:
-
-- [docs/INSTALL.md](docs/INSTALL.md)
-- [docs/RELEASES.md](docs/RELEASES.md)
-
-## Installation in `.nuke`
-
-This repository is already structured like a Nuke package. To install it locally, put the folder in `.nuke` and add its path from your global `.nuke/init.py`, or package it as part of your studio plugin deployment.

@@ -1,4 +1,4 @@
-"""Node setup hooks for TVectorBlurCUDA."""
+"""Node setup hooks for TVectorBlur."""
 
 
 def setup_node_hooks() -> None:

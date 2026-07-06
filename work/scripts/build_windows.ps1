@@ -17,6 +17,14 @@ if (-not $NukeVersion) {
 
 $BuildDir = Join-Path $ProjectRoot ("build\windows-nuke-" + $NukeVersion)
 
+$cacheFile = Join-Path $BuildDir "CMakeCache.txt"
+if (Test-Path $cacheFile) {
+    $cacheText = Get-Content -LiteralPath $cacheFile -Raw
+    if ($cacheText -notmatch [regex]::Escape($ProjectRoot)) {
+        Remove-Item -Recurse -Force $BuildDir
+    }
+}
+
 $cmakeArgs = @(
     "-S", $ProjectRoot,
     "-B", $BuildDir,
@@ -38,4 +46,9 @@ if ($LASTEXITCODE -ne 0) {
 & cmake --build $BuildDir --config $Configuration --target TVectorBlurCUDA
 if ($LASTEXITCODE -ne 0) {
     throw "Build failed for '$NukeRoot'."
+}
+
+& python (Join-Path $PSScriptRoot "sync_publish_bins.py")
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to sync publish binaries after building '$NukeRoot'."
 }

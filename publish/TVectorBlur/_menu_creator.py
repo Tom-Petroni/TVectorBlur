@@ -8,7 +8,7 @@ import os
 import nuke  # ty:ignore[unresolved-import]
 
 try:
-    from TVectorBlurCUDA._consts import (
+    from TVectorBlur._consts import (
         ICON_FILENAME,
         MENU_NAME,
         NODE_CLASS_NAME,
@@ -17,7 +17,7 @@ try:
         RESOURCES_PATH,
         normalized_path,
     )
-    from TVectorBlurCUDA._plugin_loader import ensure_node_class_loaded
+    from TVectorBlur._plugin_loader import ensure_node_class_loaded
 except Exception:
     from _consts import (
         ICON_FILENAME,

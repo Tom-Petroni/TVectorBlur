@@ -1,4 +1,4 @@
-"""Main entry point for TVectorBlurCUDA Nuke plugin."""
+"""Main entry point for TVectorBlur Nuke plugin."""
 
 import logging
 import os
@@ -6,9 +6,9 @@ import os
 import nuke  # ty:ignore[unresolved-import]
 
 try:
-    from TVectorBlurCUDA._consts import HOOKS_SETUP_ENV_VAR
-    from TVectorBlurCUDA._node_setup import setup_node_hooks
-    from TVectorBlurCUDA._plugin_loader import add_plugin_path_safe
+    from TVectorBlur._consts import HOOKS_SETUP_ENV_VAR
+    from TVectorBlur._node_setup import setup_node_hooks
+    from TVectorBlur._plugin_loader import add_plugin_path_safe
 except Exception:
     from _consts import HOOKS_SETUP_ENV_VAR
     from _node_setup import setup_node_hooks
@@ -22,7 +22,7 @@ def _refresh_plugin_path() -> None:
     if loaded:
         setup_node_hooks()
     else:
-        nuke.tprint("[TVectorBlurCUDA] Plugin binary not loaded yet.")
+        nuke.tprint("[TVectorBlur] Plugin binary not loaded yet.")
 
 
 def _register_script_hooks() -> None:
@@ -41,4 +41,4 @@ try:
     _register_script_hooks()
     _refresh_plugin_path()
 except Exception:  # pragma: no cover
-    logger.exception("Unexpected failure while initializing the TVectorBlurCUDA plugin.")
+    logger.exception("Unexpected failure while initializing the TVectorBlur plugin.")

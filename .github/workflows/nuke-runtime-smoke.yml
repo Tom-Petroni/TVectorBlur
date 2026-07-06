@@ -1,0 +1,152 @@
+name: Nuke Runtime Smoke (CUDA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      nuke_versions:
+        description: "Comma-separated supported Nuke minor versions"
+        required: false
+        default: "13.0,14.0,15.0,16.0,17.0"
+      include_windows:
+        description: "Run on Windows self-hosted runners"
+        required: false
+        type: boolean
+        default: true
+      include_linux:
+        description: "Run on Linux self-hosted runners"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    name: Prepare Runtime Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Generate runtime matrix
+        id: generate
+        env:
+          INPUT_NUKE_VERSIONS: ${{ github.event.inputs.nuke_versions }}
+          INPUT_INCLUDE_WINDOWS: ${{ github.event.inputs.include_windows }}
+          INPUT_INCLUDE_LINUX: ${{ github.event.inputs.include_linux }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          supported_versions = ["13.0", "14.0", "15.0", "16.0", "17.0"]
+
+          def parse_versions(raw: str):
+              if not raw:
+                  return []
+              return [version.strip() for version in raw.split(",") if version.strip()]
+
+          versions = parse_versions(os.getenv("INPUT_NUKE_VERSIONS", "")) or supported_versions
+          unsupported = [version for version in versions if version not in supported_versions]
+          if unsupported:
+              print("Unsupported Nuke versions requested: {}".format(", ".join(unsupported)), file=sys.stderr)
+              sys.exit(1)
+
+          target_flags = {
+              "windows": os.getenv("INPUT_INCLUDE_WINDOWS", "true").lower() == "true",
+              "linux": os.getenv("INPUT_INCLUDE_LINUX", "true").lower() == "true",
+          }
+
+          target_rows = {
+              "windows": {"runner_labels": ["self-hosted", "nuke", "windows"], "platform_name": "windows"},
+              "linux": {"runner_labels": ["self-hosted", "nuke", "linux"], "platform_name": "linux"},
+          }
+
+          include = []
+          for version in versions:
+              for platform_name, enabled in target_flags.items():
+                  if not enabled:
+                      continue
+                  row = dict(target_rows[platform_name])
+                  row["nuke_version"] = version
+                  include.append(row)
+
+          if not include:
+              print("At least one runtime target must be enabled.", file=sys.stderr)
+              sys.exit(1)
+
+          matrix = {"include": include}
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("matrix={}\n".format(json.dumps(matrix)))
+          print(json.dumps(matrix))
+          PY
+
+  smoke:
+    name: Runtime Smoke Nuke ${{ matrix.nuke_version }} on ${{ matrix.platform_name }}
+    needs: matrix
+    runs-on: ${{ fromJson(toJson(matrix.runner_labels)) }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Nuke executable on Windows
+        if: matrix.platform_name == 'windows'
+        id: resolve_windows
+        shell: powershell
+        run: |
+          $versionKey = "${{ matrix.nuke_version }}".Replace('.', '_')
+          $envName = "NUKE_${versionKey}_EXECUTABLE"
+          $nukeExe = [Environment]::GetEnvironmentVariable($envName)
+          if ([string]::IsNullOrWhiteSpace($nukeExe)) {
+            throw "Missing runner environment variable: $envName"
+          }
+          "nuke_executable=$nukeExe" >> $env:GITHUB_OUTPUT
+
+      - name: Resolve Nuke executable on Unix
+        if: matrix.platform_name != 'windows'
+        id: resolve_unix
+        shell: bash
+        run: |
+          version_key="${{ matrix.nuke_version }}"
+          version_key="${version_key//./_}"
+          env_name="NUKE_${version_key}_EXECUTABLE"
+          nuke_executable="${!env_name:-}"
+          if [[ -z "${nuke_executable}" ]]; then
+            echo "Missing runner environment variable: ${env_name}" >&2
+            exit 1
+          fi
+          printf 'nuke_executable=%s\n' "${nuke_executable}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run runtime smoke on Windows
+        if: matrix.platform_name == 'windows'
+        env:
+          TSUITE_NODE_CLASS: TVectorBlur
+          TSUITE_PACKAGE_NAME: TVectorBlur
+          TSUITE_PLUGIN_ROOT: ${{ github.workspace }}\publish
+        shell: powershell
+        run: |
+          $ciHome = Join-Path $env:GITHUB_WORKSPACE ".ci-home"
+          New-Item -ItemType Directory -Force -Path (Join-Path $ciHome ".nuke") | Out-Null
+          $env:HOME = $ciHome
+          $env:USERPROFILE = $ciHome
+          $env:NUKE_PATH = Join-Path $env:GITHUB_WORKSPACE "publish"
+          & "${{ steps.resolve_windows.outputs.nuke_executable }}" -t work/scripts/runtime_smoke.py
+
+      - name: Run runtime smoke on Unix
+        if: matrix.platform_name != 'windows'
+        env:
+          TSUITE_NODE_CLASS: TVectorBlur
+          TSUITE_PACKAGE_NAME: TVectorBlur
+          TSUITE_PLUGIN_ROOT: ${{ github.workspace }}/publish
+        shell: bash
+        run: |
+          ci_home="${GITHUB_WORKSPACE}/.ci-home"
+          mkdir -p "${ci_home}/.nuke"
+          HOME="${ci_home}" \
+          USERPROFILE="${ci_home}" \
+          NUKE_PATH="${GITHUB_WORKSPACE}/publish" \
+          "${{ steps.resolve_unix.outputs.nuke_executable }}" -t work/scripts/runtime_smoke.py

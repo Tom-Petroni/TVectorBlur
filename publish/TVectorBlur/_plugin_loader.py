@@ -9,7 +9,7 @@ import platform
 import nuke  # ty:ignore[unresolved-import]
 
 try:
-    from TVectorBlurCUDA._consts import (
+    from TVectorBlur._consts import (
         INSTALLATION_PATH,
         NODE_CLASS_NAME,
         PLUGIN_BIN_DIRECTORY,

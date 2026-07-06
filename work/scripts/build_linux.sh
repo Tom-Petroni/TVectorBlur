@@ -22,6 +22,10 @@ fi
 
 BUILD_DIR="${PROJECT_ROOT}/build/linux-nuke-${NUKE_VERSION}"
 
+if [[ -f "${BUILD_DIR}/CMakeCache.txt" ]] && ! grep -q "${PROJECT_ROOT}" "${BUILD_DIR}/CMakeCache.txt"; then
+  rm -rf "${BUILD_DIR}"
+fi
+
 cmake \
   -S "${PROJECT_ROOT}" \
   -B "${BUILD_DIR}" \
@@ -31,3 +35,5 @@ cmake \
   -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}"
 
 cmake --build "${BUILD_DIR}" --config "${BUILD_TYPE}" --target TVectorBlurCUDA
+
+python3 "${SCRIPT_DIR}/sync_publish_bins.py"

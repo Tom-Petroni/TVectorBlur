@@ -3,13 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from package_release import package_target
+from sync_publish_bins import sync_publish_bins
 
 
-ROOT = Path(__file__).resolve().parents[1]
+WORK_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = WORK_ROOT.parent
 
 
 def main() -> int:
-    bin_root = ROOT / "bin"
+    bin_root = REPO_ROOT / "publish" / "TVectorBlur" / "bin"
+    if not bin_root.exists() or not any(bin_root.iterdir()):
+        sync_publish_bins()
+
     if not bin_root.exists():
         raise SystemExit("No bin directory found. Build the plugin first.")
 
@@ -22,7 +27,7 @@ def main() -> int:
     if not built_targets:
         raise SystemExit("No built targets were found under bin/.")
 
-    dist_dir = ROOT / "dist"
+    dist_dir = WORK_ROOT / "dist"
     dist_dir.mkdir(parents=True, exist_ok=True)
 
     for target in built_targets:

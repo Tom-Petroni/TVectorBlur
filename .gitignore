@@ -1,6 +1,8 @@
-/build/
-/bin/
-/dist/
+/work/build/
+/work/dist/
+/work/scripts/__pycache__/
+/work/TVectorBlur/bin/*
+!/work/TVectorBlur/bin/.gitkeep
 /.vs/
 /.idea/
 /.vscode/
@@ -22,3 +24,8 @@
 *.zip
 __pycache__/
 *.pyc
+!/publish/TVectorBlur/bin/
+!/publish/TVectorBlur/bin/**/
+!/publish/TVectorBlur/bin/**/*.dll
+!/publish/TVectorBlur/bin/**/*.so
+!/publish/TVectorBlur/bin/**/*.dylib

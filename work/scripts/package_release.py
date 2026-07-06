@@ -5,8 +5,11 @@ import json
 import shutil
 from pathlib import Path
 
+from sync_publish_bins import sync_publish_bins
 
-ROOT = Path(__file__).resolve().parents[1]
+
+WORK_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = WORK_ROOT.parent
 PACKAGE_FILES = [
     "__init__.py",
     "init.py",
@@ -19,10 +22,13 @@ PACKAGE_FILES = [
 PACKAGE_DIRS = [
     "resources",
 ]
+PUBLISH_ROOT_FILES = [
+    "init.py",
+]
 
 
 def read_version() -> str:
-    return (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    return (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def copy_tree(src: Path, dst: Path) -> None:
@@ -52,9 +58,11 @@ def build_manifest(version: str, target: str, package_name: str) -> dict:
 
 def package_target(target: str, output_dir: Path) -> Path:
     version = read_version()
-    target_path = ROOT / "bin" / target
+    target_path = REPO_ROOT / "publish" / "TVectorBlur" / "bin" / target
     if not target_path.is_dir():
-        raise FileNotFoundError(f"Built target folder not found: {target_path}")
+        sync_publish_bins()
+        if not target_path.is_dir():
+            raise FileNotFoundError(f"Built target folder not found: {target_path}")
 
     parts = target.split("/")
     if len(parts) != 3:
@@ -69,11 +77,14 @@ def package_target(target: str, output_dir: Path) -> Path:
     plugin_root = staging_dir / "TVectorBlur"
     plugin_root.mkdir(parents=True, exist_ok=True)
 
+    for rel_path in PUBLISH_ROOT_FILES:
+        copy_tree(REPO_ROOT / "publish" / rel_path, staging_dir / rel_path)
+
     for rel_path in PACKAGE_FILES:
-        copy_tree(ROOT / rel_path, plugin_root / rel_path)
+        copy_tree(REPO_ROOT / "publish" / "TVectorBlur" / rel_path, plugin_root / rel_path)
 
     for rel_path in PACKAGE_DIRS:
-        copy_tree(ROOT / rel_path, plugin_root / rel_path)
+        copy_tree(REPO_ROOT / "publish" / "TVectorBlur" / rel_path, plugin_root / rel_path)
 
     copy_tree(target_path, plugin_root / "bin" / target)
 
@@ -107,7 +118,7 @@ def package_target(target: str, output_dir: Path) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Package TVectorBlur for a built Nuke/OS target.")
     parser.add_argument("--target", required=True, help="Target path under bin/, e.g. 16.0/windows/x86_64")
-    parser.add_argument("--output-dir", default=str(ROOT / "dist"), help="Where to write the zip archive")
+    parser.add_argument("--output-dir", default=str(WORK_ROOT / "dist"), help="Where to write the zip archive")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir).resolve()
