@@ -48,6 +48,12 @@ cd work
 ./scripts/build_linux.sh /opt/Nuke16.0v9
 ```
 
+Linux self-hosted runner:
+
+- setup guide: `work/docs/LINUX_RUNNER.md`
+- env generator: `work/scripts/write_linux_runner_env.sh`
+- host validator: `work/scripts/check_linux_runner.sh`
+
 ## CI / Releases
 
 Main workflows:
@@ -56,13 +62,21 @@ Main workflows:
 - `.github/workflows/nuke-runtime-smoke.yml`
 - `.github/workflows/version-tag.yml`
 
-Repository variables expected by the build workflow:
+Runner environment variables expected by the self-hosted workflows:
 
 - `NUKE_13_0_ROOT`
 - `NUKE_14_0_ROOT`
 - `NUKE_15_0_ROOT`
 - `NUKE_16_0_ROOT`
 - `NUKE_17_0_ROOT`
+- `NUKE_13_0_EXECUTABLE`
+- `NUKE_14_0_EXECUTABLE`
+- `NUKE_15_0_EXECUTABLE`
+- `NUKE_16_0_EXECUTABLE`
+- `NUKE_17_0_EXECUTABLE`
+
+Repository variables expected by the build workflow:
+
 - `ENABLE_LINUX_BUILDS=true` to enable Linux build jobs
 - `ENABLE_WINDOWS_BUILDS=false` to disable Windows build jobs
 

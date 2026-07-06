@@ -34,6 +34,13 @@ cd work
 ./scripts/build_linux.sh /opt/Nuke16.0v9
 ```
 
+Linux self-hosted runner helpers:
+
+- `scripts/write_linux_runner_env.sh`
+- `scripts/check_linux_runner.sh`
+- `scripts/start_linux_runner_with_env.sh`
+- `docs/LINUX_RUNNER.md`
+
 ## Packaging
 
 Build outputs land in:

@@ -133,37 +133,46 @@ jobs:
           fi
           echo "enabled=true" >> "${GITHUB_OUTPUT}"
 
-      - name: Resolve Nuke root
-        if: steps.enabled.outputs.enabled == 'true'
-        id: nuke_root
+      - name: Resolve Nuke root on Windows
+        if: steps.enabled.outputs.enabled == 'true' && matrix.target_platform == 'windows'
+        id: nuke_root_windows
+        shell: powershell
+        run: |
+          $versionKey = "${{ matrix.nuke_version }}".Replace('.', '_')
+          $envName = "NUKE_${versionKey}_ROOT"
+          $nukeRoot = [Environment]::GetEnvironmentVariable($envName)
+          if ([string]::IsNullOrWhiteSpace($nukeRoot)) {
+            throw "Missing runner environment variable: $envName"
+          }
+          "path=$nukeRoot" >> $env:GITHUB_OUTPUT
+
+      - name: Resolve Nuke root on Unix
+        if: steps.enabled.outputs.enabled == 'true' && matrix.target_platform != 'windows'
+        id: nuke_root_unix
         shell: bash
         run: |
-          case "${{ matrix.nuke_version }}" in
-            13.0) value="${{ vars.NUKE_13_0_ROOT }}" ;;
-            14.0) value="${{ vars.NUKE_14_0_ROOT }}" ;;
-            15.0) value="${{ vars.NUKE_15_0_ROOT }}" ;;
-            16.0) value="${{ vars.NUKE_16_0_ROOT }}" ;;
-            17.0) value="${{ vars.NUKE_17_0_ROOT }}" ;;
-            *) value="" ;;
-          esac
-          if [[ -z "${value}" ]]; then
-            echo "Missing repository variable for Nuke ${{ matrix.nuke_version }}" >&2
+          version_key="${{ matrix.nuke_version }}"
+          version_key="${version_key//./_}"
+          env_name="NUKE_${version_key}_ROOT"
+          nuke_root="${!env_name:-}"
+          if [[ -z "${nuke_root}" ]]; then
+            echo "Missing runner environment variable: ${env_name}" >&2
             exit 1
           fi
-          printf 'path=%s\n' "${value}" >> "${GITHUB_OUTPUT}"
+          printf 'path=%s\n' "${nuke_root}" >> "${GITHUB_OUTPUT}"
 
       - name: Build on Windows
         if: steps.enabled.outputs.enabled == 'true' && matrix.target_platform == 'windows'
         shell: pwsh
         run: |
-          ./scripts/build_windows.ps1 -NukeRoot "${{ steps.nuke_root.outputs.path }}" -Configuration Release
+          ./scripts/build_windows.ps1 -NukeRoot "${{ steps.nuke_root_windows.outputs.path }}" -Configuration Release
 
       - name: Build on Linux
         if: steps.enabled.outputs.enabled == 'true' && matrix.target_platform == 'linux'
         shell: bash
         run: |
           chmod +x ./scripts/build_linux.sh
-          ./scripts/build_linux.sh "${{ steps.nuke_root.outputs.path }}" Release
+          ./scripts/build_linux.sh "${{ steps.nuke_root_unix.outputs.path }}" Release
 
       - name: Verify expected binary exists
         if: steps.enabled.outputs.enabled == 'true'
