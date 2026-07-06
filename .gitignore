@@ -1,5 +1,6 @@
 /work/build/
 /work/dist/
+/work/target/
 /work/scripts/__pycache__/
 /work/TVectorBlur/bin/*
 !/work/TVectorBlur/bin/.gitkeep

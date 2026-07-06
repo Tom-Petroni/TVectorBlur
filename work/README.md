@@ -13,7 +13,14 @@ staging used to produce the distributable `publish/` payload.
 
 ## Quick build
 
-From the repository root:
+GitHub-hosted style build:
+
+```bash
+cd work
+cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads
+```
+
+Direct local build from an installed Nuke:
 
 ```powershell
 cd work
@@ -40,6 +47,7 @@ Linux self-hosted runner helpers:
 - `scripts/check_linux_runner.sh`
 - `scripts/start_linux_runner_with_env.sh`
 - `docs/LINUX_RUNNER.md`
+- `CI_TESTING.md`
 
 ## Packaging
 

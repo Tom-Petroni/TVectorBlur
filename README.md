@@ -27,6 +27,13 @@ Binaries are versioned in:
 
 ## Build From Source
 
+GitHub-hosted build command, same idea as `TBlur` / `TNoise`:
+
+```bash
+cd work
+cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads
+```
+
 Windows:
 
 ```powershell
@@ -61,6 +68,14 @@ Main workflows:
 - `.github/workflows/nuke-build.yml`
 - `.github/workflows/nuke-runtime-smoke.yml`
 - `.github/workflows/version-tag.yml`
+- `work/CI_TESTING.md`
+
+`nuke-build.yml` is now the hosted pipeline:
+
+- downloads the Nuke installers per supported minor version
+- extracts a buildable local Nuke root into `work/target/nuke/deps/`
+- builds `TVectorBlur` on GitHub-hosted Windows and Linux runners
+- bundles the multi-version package and syncs `publish/`
 
 Runner environment variables expected by the self-hosted workflows:
 
@@ -84,11 +99,6 @@ Runner environment variables expected by the self-hosted workflows:
 - `NUKE_15_2_EXECUTABLE`
 - `NUKE_16_0_EXECUTABLE`
 - `NUKE_17_0_EXECUTABLE`
-
-Repository variables expected by the build workflow:
-
-- `ENABLE_LINUX_BUILDS=true` to enable Linux build jobs
-- `ENABLE_WINDOWS_BUILDS=false` to disable Windows build jobs
 
 ## Repository Layout
 

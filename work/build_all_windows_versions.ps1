@@ -1,7 +1,7 @@
 param(
     [string[]]$Versions = @("13.0", "13.1", "13.2", "14.0", "14.1", "15.0", "15.1", "15.2", "16.0", "17.0"),
     [string]$Configuration = "Release",
-    [string]$CudaArchitectures = "native",
+    [string]$CudaArchitectures = "",
     [string]$CudaRoot = "",
     [string]$Generator = "Visual Studio 17 2022",
     [switch]$DeployToPublish,

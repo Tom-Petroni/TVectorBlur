@@ -2,12 +2,24 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$NukeRoot,
     [string]$Configuration = "Release",
-    [string]$CudaArchitectures = "native",
+    [string]$CudaArchitectures = "",
     [string]$CudaRoot = "",
     [string]$Generator = "Visual Studio 17 2022"
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $CudaArchitectures) {
+    $CudaArchitectures = if ($env:TVECTORBLUR_CUDA_ARCHITECTURES) {
+        $env:TVECTORBLUR_CUDA_ARCHITECTURES
+    } else {
+        "native"
+    }
+}
+
+if (-not $CudaRoot -and $env:CUDA_PATH) {
+    $CudaRoot = $env:CUDA_PATH
+}
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $NukeVersion = [regex]::Match((Split-Path $NukeRoot -Leaf), "\d+\.\d+").Value

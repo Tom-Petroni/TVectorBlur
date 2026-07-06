@@ -8,7 +8,7 @@ fi
 
 NUKE_ROOT="$1"
 BUILD_TYPE="${2:-Release}"
-CUDA_ARCHITECTURES="${3:-native}"
+CUDA_ARCHITECTURES="${3:-${TVECTORBLUR_CUDA_ARCHITECTURES:-native}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
