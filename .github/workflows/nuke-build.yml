@@ -24,6 +24,7 @@ permissions:
 
 defaults:
   run:
+    shell: bash
     working-directory: work
 
 concurrency:
@@ -50,6 +51,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            work -> target
 
       - name: Python syntax check
         run: python -m compileall init.py TVectorBlur scripts xtask
@@ -140,6 +144,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            work -> target
 
       - name: Set up MSVC environment
         if: runner.os == 'Windows'
@@ -161,9 +168,10 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.cuda_backend == 'true'
         uses: Jimver/cuda-toolkit@v0.2.35
         with:
-          cuda: "13.2.0"
+          cuda: "12.4.1"
 
       - name: Build and package plugin
+        shell: bash
         env:
           RUST_BACKTRACE: "1"
           TVECTORBLUR_CUDA_ARCHITECTURES: "75;86;89;90"
