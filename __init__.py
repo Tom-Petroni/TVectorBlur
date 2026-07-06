@@ -1,0 +1,1 @@
+"""TVectorBlurCUDA Nuke plugin package."""
