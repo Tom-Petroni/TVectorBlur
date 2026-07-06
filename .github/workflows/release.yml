@@ -8,6 +8,9 @@ on:
 
 jobs:
   build-and-package:
+    if: |
+      (matrix.os_name != 'linux' || vars.ENABLE_LINUX_BUILDS == 'true') &&
+      (matrix.os_name != 'windows' || vars.ENABLE_WINDOWS_BUILDS != 'false')
     name: ${{ matrix.os_name }} / Nuke ${{ matrix.nuke_version }}
     strategy:
       fail-fast: false

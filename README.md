@@ -69,6 +69,8 @@ Repository variables expected by the workflow:
 - `NUKE_16_0_ROOT`
 - `NUKE_15_1_ROOT`
 - `NUKE_17_0_ROOT`
+- `ENABLE_LINUX_BUILDS=true` if you want Linux jobs to run
+- `ENABLE_WINDOWS_BUILDS=false` if you want to temporarily disable Windows jobs
 
 Recommended runner labels:
 
