@@ -69,7 +69,7 @@ function(tvectorblur_detect_nuke_version out_var)
     set(${out_var} "${_major_minor}" PARENT_SCOPE)
 endfunction()
 
-function(tvectorblur_detect_platform out_os out_arch)
+function(tvectorblur_detect_platform out_os)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         set(_os "windows")
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -78,21 +78,11 @@ function(tvectorblur_detect_platform out_os out_arch)
         message(FATAL_ERROR "Unsupported platform '${CMAKE_SYSTEM_NAME}'.")
     endif()
 
-    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _processor)
-    if(_processor MATCHES "^(amd64|x86_64|x64)$")
-        set(_arch "x86_64")
-    elseif(_processor MATCHES "^(arm64|aarch64)$")
-        set(_arch "aarch64")
-    else()
-        message(FATAL_ERROR "Unsupported architecture '${CMAKE_SYSTEM_PROCESSOR}'.")
-    endif()
-
     set(${out_os} "${_os}" PARENT_SCOPE)
-    set(${out_arch} "${_arch}" PARENT_SCOPE)
 endfunction()
 
 tvectorblur_detect_nuke_version(TVECTORBLUR_NUKE_VERSION)
-tvectorblur_detect_platform(TVECTORBLUR_PLATFORM TVECTORBLUR_ARCH)
+tvectorblur_detect_platform(TVECTORBLUR_PLATFORM)
 
 if(TVECTORBLUR_NUKE_ROOT AND TVECTORBLUR_NUKE_VERSION VERSION_LESS "14.0")
     set_target_properties(Nuke::NDK PROPERTIES
@@ -103,7 +93,7 @@ if(TVECTORBLUR_NUKE_ROOT AND TVECTORBLUR_NUKE_VERSION VERSION_LESS "14.0")
 endif()
 
 set(TVECTORBLUR_OUTPUT_DIR
-    "${CMAKE_SOURCE_DIR}/TVectorBlur/bin/${TVECTORBLUR_NUKE_VERSION}/${TVECTORBLUR_PLATFORM}/${TVECTORBLUR_ARCH}")
+    "${CMAKE_SOURCE_DIR}/TVectorBlur/bin/${TVECTORBLUR_NUKE_VERSION}/${TVECTORBLUR_PLATFORM}")
 
 message(STATUS "TVectorBlur will be built for Nuke ${TVECTORBLUR_NUKE_VERSION} -> ${TVECTORBLUR_OUTPUT_DIR}")
 

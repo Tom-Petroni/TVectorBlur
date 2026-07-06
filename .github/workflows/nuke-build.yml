@@ -84,14 +84,12 @@ jobs:
                   "runner_labels": ["self-hosted", "nuke", "linux"],
                   "target_platform": "linux",
                   "os_name": "linux",
-                  "arch_name": "x86_64",
                   "lib_ext": "so",
               },
               {
                   "runner_labels": ["self-hosted", "nuke", "windows"],
                   "target_platform": "windows",
                   "os_name": "windows",
-                  "arch_name": "x86_64",
                   "lib_ext": "dll",
               },
           ]
@@ -173,7 +171,6 @@ jobs:
         env:
           NUKE_VERSION: ${{ matrix.nuke_version }}
           OS_NAME: ${{ matrix.os_name }}
-          ARCH_NAME: ${{ matrix.arch_name }}
           LIB_EXT: ${{ matrix.lib_ext }}
         run: |
           python - <<'PY'
@@ -185,7 +182,6 @@ jobs:
               / "bin"
               / os.environ["NUKE_VERSION"]
               / os.environ["OS_NAME"]
-              / os.environ["ARCH_NAME"]
               / f"TVectorBlur.{os.environ['LIB_EXT']}"
           )
           if not expected.is_file():
@@ -203,7 +199,7 @@ jobs:
             work/init.py
             work/TVectorBlur/*.py
             work/TVectorBlur/resources/*
-            work/TVectorBlur/bin/${{ matrix.nuke_version }}/${{ matrix.os_name }}/${{ matrix.arch_name }}/TVectorBlur.${{ matrix.lib_ext }}
+            work/TVectorBlur/bin/${{ matrix.nuke_version }}/${{ matrix.os_name }}/TVectorBlur.${{ matrix.lib_ext }}
 
   bundle:
     name: Bundle Multi-Platform Package

@@ -21,8 +21,7 @@ def main() -> int:
     built_targets: list[str] = []
     for nuke_dir in sorted(path for path in bin_root.iterdir() if path.is_dir()):
         for os_dir in sorted(path for path in nuke_dir.iterdir() if path.is_dir()):
-            for arch_dir in sorted(path for path in os_dir.iterdir() if path.is_dir()):
-                built_targets.append(f"{nuke_dir.name}/{os_dir.name}/{arch_dir.name}")
+            built_targets.append(f"{nuke_dir.name}/{os_dir.name}")
 
     if not built_targets:
         raise SystemExit("No built targets were found under bin/.")

@@ -23,16 +23,16 @@ TVectorBlur/
   menu.py
   _plugin_loader.py
   resources/
-  bin/<major.minor>/<os>/<arch>/
+  bin/<major.minor>/<os>/
 ```
 
 Examples:
 
-- `bin/16.0/windows/x86_64/TVectorBlur.dll`
-- `bin/16.0/linux/x86_64/TVectorBlur.so`
+- `bin/16.0/windows/TVectorBlur.dll`
+- `bin/16.0/linux/TVectorBlur.so`
 
 ## Troubleshooting
 
 - If the node does not appear, check the Nuke script editor for loader messages.
-- If the binary does not load, verify that the package contains a matching `bin/<major.minor>/<os>/<arch>` folder.
+- If the binary does not load, verify that the package contains a matching `bin/<major.minor>/<os>` folder.
 - Linux builds require a Linux Nuke SDK build environment. Windows binaries cannot be reused on Linux.

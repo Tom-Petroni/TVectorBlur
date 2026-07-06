@@ -38,11 +38,11 @@ cd work
 
 Build outputs land in:
 
-`work/TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
+`work/TVectorBlur/bin/<nuke_version>/<os>/`
 
 The publish workflows then sync the compiled binaries into:
 
-`publish/TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
+`publish/TVectorBlur/bin/<nuke_version>/<os>/`
 
 Local build scripts now do this sync automatically so the `publish/` payload
 stays ready to zip or ship without a manual copy step.

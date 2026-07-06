@@ -19,12 +19,11 @@ Expected result:
 
 - Nuke: `13.0`, `14.0`, `15.0`, `16.0`, `17.0`
 - OS: Windows, Linux
-- Architecture: `x86_64`
 - Backend: CUDA
 
 Binaries are versioned in:
 
-`publish/TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
+`publish/TVectorBlur/bin/<nuke_version>/<os>/`
 
 ## Build From Source
 

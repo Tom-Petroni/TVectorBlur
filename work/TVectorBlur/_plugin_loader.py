@@ -29,9 +29,6 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-NUKE_ARM_VERSION = 15
-
-
 class PluginNotFoundError(Exception):
     pass
 
@@ -48,10 +45,6 @@ def _get_nuke_version() -> str:
     return f"{nuke.NUKE_VERSION_MAJOR}.{nuke.NUKE_VERSION_MINOR}"
 
 
-def _machine_name() -> str:
-    return (platform.machine() or platform.processor() or "").strip().lower()
-
-
 def _get_operating_system_name() -> str:
     operating_system = platform.system().lower()
 
@@ -63,21 +56,6 @@ def _get_operating_system_name() -> str:
         return "macos"
 
     raise UnsupportedSystemError(f"System '{operating_system}' is not supported.")
-
-
-def _get_arch() -> str:
-    architecture = _machine_name()
-    operating_system = _get_operating_system_name()
-
-    if architecture in {"amd64", "x64", "x86_64", "x86-64", "em64t"}:
-        return "x86_64"
-
-    if architecture in {"arm64", "aarch64"} and operating_system == "macos":
-        if nuke.NUKE_VERSION_MAJOR >= NUKE_ARM_VERSION:
-            return "aarch64"
-        return "x86_64"
-
-    raise UnsupportedSystemError(f"Architecture '{architecture}' is not supported.")
 
 
 def _library_filename() -> str:
@@ -146,17 +124,23 @@ def _resolve_version_folder() -> str:
     return selected
 
 
-def _build_plugin_path() -> str:
+def _legacy_arch_folders() -> list[str]:
+    architecture = (platform.machine() or platform.processor() or "").strip().lower()
+    if architecture in {"amd64", "x64", "x86_64", "x86-64", "em64t"}:
+        return ["x86_64"]
+    if architecture in {"arm64", "aarch64"}:
+        return ["aarch64", "x86_64"]
+    return []
+
+
+def _candidate_plugin_paths() -> list[str]:
     version_folder = _resolve_version_folder()
-    return normalized_path(
-        os.path.join(
-            INSTALLATION_PATH,
-            PLUGIN_BIN_DIRECTORY,
-            version_folder,
-            _get_operating_system_name(),
-            _get_arch(),
-        )
-    )
+    os_name = _get_operating_system_name()
+    base_path = os.path.join(INSTALLATION_PATH, PLUGIN_BIN_DIRECTORY, version_folder, os_name)
+    candidates = [normalized_path(base_path)]
+    for arch_folder in _legacy_arch_folders():
+        candidates.append(normalized_path(os.path.join(base_path, arch_folder)))
+    return candidates
 
 
 def _build_binary_path(plugin_path: str) -> str:
@@ -196,8 +180,8 @@ def _load_binary(binary_path: str) -> None:
 
 
 def ensure_node_class_loaded() -> str:
-    plugin_path = _build_plugin_path()
-    if not os.path.isdir(plugin_path):
+    plugin_path = next((path for path in _candidate_plugin_paths() if os.path.isdir(path)), "")
+    if not plugin_path:
         raise PluginNotFoundError(
             (
                 f"{NODE_CLASS_NAME} is installed, but this Nuke version "

@@ -43,7 +43,6 @@ def build_manifest(version: str, target: str, package_name: str) -> dict:
     parts = target.split("/")
     nuke_version = parts[0] if len(parts) > 0 else "unknown"
     operating_system = parts[1] if len(parts) > 1 else "unknown"
-    arch = parts[2] if len(parts) > 2 else "unknown"
     return {
         "product": "TVectorBlur",
         "version": version,
@@ -51,7 +50,6 @@ def build_manifest(version: str, target: str, package_name: str) -> dict:
         "target": {
             "nuke_version": nuke_version,
             "os": operating_system,
-            "arch": arch,
         },
     }
 
@@ -65,11 +63,11 @@ def package_target(target: str, output_dir: Path) -> Path:
             raise FileNotFoundError(f"Built target folder not found: {target_path}")
 
     parts = target.split("/")
-    if len(parts) != 3:
-        raise ValueError("Target must look like '<nuke>/<os>/<arch>', for example '16.0/windows/x86_64'.")
+    if len(parts) != 2:
+        raise ValueError("Target must look like '<nuke>/<os>', for example '16.0/windows'.")
 
-    nuke_version, operating_system, arch = parts
-    package_name = f"TVectorBlur-{version}-nuke{nuke_version}-{operating_system}-{arch}"
+    nuke_version, operating_system = parts
+    package_name = f"TVectorBlur-{version}-nuke{nuke_version}-{operating_system}"
     staging_dir = output_dir / package_name
     if staging_dir.exists():
         shutil.rmtree(staging_dir)
@@ -97,7 +95,7 @@ def package_target(target: str, output_dir: Path) -> Path:
                 "2. Make sure your global .nuke/init.py adds the package path if needed.",
                 "3. Restart Nuke.",
                 "",
-                f"Included target: Nuke {nuke_version} / {operating_system} / {arch}",
+                f"Included target: Nuke {nuke_version} / {operating_system}",
             ]
         ),
         encoding="utf-8",
@@ -117,7 +115,7 @@ def package_target(target: str, output_dir: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Package TVectorBlur for a built Nuke/OS target.")
-    parser.add_argument("--target", required=True, help="Target path under bin/, e.g. 16.0/windows/x86_64")
+    parser.add_argument("--target", required=True, help="Target path under bin/, e.g. 16.0/windows")
     parser.add_argument("--output-dir", default=str(WORK_ROOT / "dist"), help="Where to write the zip archive")
     args = parser.parse_args()
 

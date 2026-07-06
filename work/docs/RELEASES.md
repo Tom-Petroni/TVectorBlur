@@ -13,19 +13,19 @@
 ### Windows
 
 ```powershell
-python ./scripts/package_release.py --target 16.0/windows/x86_64
+python ./scripts/package_release.py --target 16.0/windows
 ```
 
 ### Linux
 
 ```bash
-python3 ./scripts/package_release.py --target 16.0/linux/x86_64
+python3 ./scripts/package_release.py --target 16.0/linux
 ```
 
 ## Recommended public naming
 
-- `TVectorBlur-1.0.0-nuke13.0-windows-x86_64.zip`
-- `TVectorBlur-1.0.0-nuke16.0-linux-x86_64.zip`
+- `TVectorBlur-1.0.0-nuke13.0-windows.zip`
+- `TVectorBlur-1.0.0-nuke16.0-linux.zip`
 
 ## Licensing note
 
