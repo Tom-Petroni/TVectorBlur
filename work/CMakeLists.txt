@@ -19,17 +19,29 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES native)
 endif()
 
-if(TVECTORBLUR_NUKE_ROOT)
-    if(EXISTS "${TVECTORBLUR_NUKE_ROOT}/cmake/NukeConfig.cmake")
-        list(PREPEND CMAKE_PREFIX_PATH "${TVECTORBLUR_NUKE_ROOT}/cmake")
-    elseif(EXISTS "${TVECTORBLUR_NUKE_ROOT}/NukeConfig.cmake")
-        list(PREPEND CMAKE_PREFIX_PATH "${TVECTORBLUR_NUKE_ROOT}")
-    else()
-        message(FATAL_ERROR "No NukeConfig.cmake was found under '${TVECTORBLUR_NUKE_ROOT}'.")
-    endif()
+if(NOT TVECTORBLUR_NUKE_ROOT)
+    message(FATAL_ERROR "TVECTORBLUR_NUKE_ROOT must point to the extracted Nuke SDK root.")
 endif()
 
-find_package(Nuke CONFIG REQUIRED)
+set(TVECTORBLUR_NUKE_INCLUDE_DIR "${TVECTORBLUR_NUKE_ROOT}/include")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(TVECTORBLUR_NUKE_DDIMAGE_LIB "${TVECTORBLUR_NUKE_ROOT}/DDImage.lib")
+    set(TVECTORBLUR_NUKE_RIPFRAMEWORK_LIB "${TVECTORBLUR_NUKE_ROOT}/RIPFramework.lib")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(TVECTORBLUR_NUKE_DDIMAGE_LIB "${TVECTORBLUR_NUKE_ROOT}/libDDImage.so")
+    set(TVECTORBLUR_NUKE_RIPFRAMEWORK_LIB "${TVECTORBLUR_NUKE_ROOT}/libRIPFramework.so")
+else()
+    message(FATAL_ERROR "Unsupported platform '${CMAKE_SYSTEM_NAME}'.")
+endif()
+
+if(NOT EXISTS "${TVECTORBLUR_NUKE_INCLUDE_DIR}")
+    message(FATAL_ERROR "Nuke include directory was not found at '${TVECTORBLUR_NUKE_INCLUDE_DIR}'.")
+endif()
+
+if(NOT EXISTS "${TVECTORBLUR_NUKE_DDIMAGE_LIB}")
+    message(FATAL_ERROR "DDImage library was not found at '${TVECTORBLUR_NUKE_DDIMAGE_LIB}'.")
+endif()
+
 find_package(CUDAToolkit REQUIRED)
 
 function(tvectorblur_detect_nuke_version out_var)
@@ -84,26 +96,35 @@ endfunction()
 tvectorblur_detect_nuke_version(TVECTORBLUR_NUKE_VERSION)
 tvectorblur_detect_platform(TVECTORBLUR_PLATFORM)
 
-if(TVECTORBLUR_NUKE_ROOT AND TVECTORBLUR_NUKE_VERSION VERSION_LESS "14.0")
-    set_target_properties(Nuke::NDK PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${TVECTORBLUR_NUKE_ROOT}/include"
-        INTERFACE_LINK_LIBRARIES
-            "OpenGL::GL;${TVECTORBLUR_NUKE_ROOT}/DDImage.lib;${TVECTORBLUR_NUKE_ROOT}/RIPFramework.lib;${TVECTORBLUR_NUKE_ROOT}/glew32.lib;${TVECTORBLUR_NUKE_ROOT}/tbb.lib;${TVECTORBLUR_NUKE_ROOT}/tbbmalloc.lib"
-    )
+set(TVECTORBLUR_ARCH "x86_64")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(TVECTORBLUR_BINARY_PREFIX "")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(TVECTORBLUR_BINARY_PREFIX "lib")
+else()
+    message(FATAL_ERROR "Unsupported platform '${CMAKE_SYSTEM_NAME}'.")
 endif()
 
 set(TVECTORBLUR_OUTPUT_DIR
-    "${CMAKE_SOURCE_DIR}/TVectorBlur/bin/${TVECTORBLUR_NUKE_VERSION}/${TVECTORBLUR_PLATFORM}")
+    "${CMAKE_SOURCE_DIR}/TVectorBlur/bin/${TVECTORBLUR_NUKE_VERSION}/${TVECTORBLUR_PLATFORM}/${TVECTORBLUR_ARCH}")
 
 message(STATUS "TVectorBlur will be built for Nuke ${TVECTORBLUR_NUKE_VERSION} -> ${TVECTORBLUR_OUTPUT_DIR}")
 
-add_nuke_plugin(TVectorBlurCUDA
+add_library(TVectorBlurCUDA MODULE
     src/TVectorBlurCUDA.cpp
     src/TVectorBlurCUDAKernel.cu
 )
 
-target_include_directories(TVectorBlurCUDA PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(TVectorBlurCUDA PRIVATE CUDA::cudart)
+target_include_directories(
+    TVectorBlurCUDA
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${TVECTORBLUR_NUKE_INCLUDE_DIR}"
+)
+target_link_libraries(TVectorBlurCUDA PRIVATE CUDA::cudart "${TVECTORBLUR_NUKE_DDIMAGE_LIB}")
+if(EXISTS "${TVECTORBLUR_NUKE_RIPFRAMEWORK_LIB}")
+    target_link_libraries(TVectorBlurCUDA PRIVATE "${TVECTORBLUR_NUKE_RIPFRAMEWORK_LIB}")
+endif()
 target_compile_features(TVectorBlurCUDA PRIVATE cxx_std_17)
 
 if(TVECTORBLUR_ENABLE_FAST_MATH)
@@ -112,7 +133,7 @@ endif()
 
 set_target_properties(TVectorBlurCUDA PROPERTIES
     OUTPUT_NAME "TVectorBlur"
-    PREFIX ""
+    PREFIX "${TVECTORBLUR_BINARY_PREFIX}"
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
     RUNTIME_OUTPUT_DIRECTORY "${TVECTORBLUR_OUTPUT_DIR}"

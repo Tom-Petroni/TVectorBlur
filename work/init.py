@@ -1,4 +1,4 @@
-"""TVectorBlur work init.py to load the local package in Nuke."""
+"""TVectorBlur init.py to load plugin in Nuke."""
 
 import os
 

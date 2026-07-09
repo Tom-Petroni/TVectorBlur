@@ -1,4 +1,4 @@
-"""Plugin loader and binary resolver."""
+"""Plugin loader and lookup script."""
 
 from __future__ import annotations
 
@@ -29,23 +29,34 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+NUKE_ARM_VERSION = 15
+"""First Nuke major version that has ARM support."""
+
+
 class PluginNotFoundError(Exception):
-    pass
+    """Raised when the plugin path is not found."""
 
 
 class PluginLoadError(Exception):
-    pass
+    """Raised when the plugin binary cannot be loaded."""
 
 
 class UnsupportedSystemError(Exception):
-    pass
+    """Raised when the operating system is not supported."""
 
 
-def _get_nuke_version() -> str:
-    return f"{nuke.NUKE_VERSION_MAJOR}.{nuke.NUKE_VERSION_MINOR}"
+def _get_nuke_version():
+    """Return the Nuke version in Major.Minor format."""
+    return "{}.{}".format(nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
 
 
-def _get_operating_system_name() -> str:
+def _machine_name():
+    """Return a normalized machine identifier for the current host."""
+    return (platform.machine() or platform.processor() or "").strip().lower()
+
+
+def _get_operating_system_name():
+    """Return the OS name matching package folders."""
     operating_system = platform.system().lower()
 
     if "linux" in operating_system:
@@ -55,24 +66,84 @@ def _get_operating_system_name() -> str:
     if "darwin" in operating_system:
         return "macos"
 
-    raise UnsupportedSystemError(f"System '{operating_system}' is not supported.")
+    raise UnsupportedSystemError("System '{}' is not supported.".format(operating_system))
 
 
-def _library_filename() -> str:
+def _get_arch():
+    """Return architecture folder name for current system."""
+    architecture = _machine_name()
+    operating_system = _get_operating_system_name()
+
+    if architecture in {"amd64", "x64", "x86_64", "x86-64", "em64t"}:
+        return "x86_64"
+
+    if architecture in {"arm64", "aarch64"} and operating_system == "macos":
+        if nuke.NUKE_VERSION_MAJOR >= NUKE_ARM_VERSION:
+            return "aarch64"
+        return "x86_64"
+
+    raise UnsupportedSystemError(
+        "Architecture '{}' is not supported.".format(architecture),
+    )
+
+
+def _library_filename():
+    """Return platform binary filename for the plugin node."""
     operating_system = _get_operating_system_name()
     if operating_system == "windows":
-        return f"{NODE_CLASS_NAME}.dll"
+        return "{}.dll".format(NODE_CLASS_NAME)
     if operating_system == "linux":
-        return f"{NODE_CLASS_NAME}.so"
-    return f"{NODE_CLASS_NAME}.dylib"
+        return "lib{}.so".format(NODE_CLASS_NAME)
+    return "lib{}.dylib".format(NODE_CLASS_NAME)
 
 
-def _is_minor_version_folder(name: str) -> bool:
+def _candidate_binary_filenames(operating_system):
+    """Return candidate filenames, preferring Windows hotfix binaries when present."""
+    if operating_system == "windows":
+        return [
+            "{}_hotfix.dll".format(NODE_CLASS_NAME),
+            "{}.dll".format(NODE_CLASS_NAME),
+        ]
+    return [_library_filename()]
+
+
+def _build_plugin_path():
+    """Build expected plugin path in installed package."""
+    version_folder = _resolve_version_folder()
+    return normalized_path(
+        os.path.join(
+            INSTALLATION_PATH,
+            PLUGIN_BIN_DIRECTORY,
+            version_folder,
+            _get_operating_system_name(),
+            _get_arch(),
+        )
+    )
+
+
+def _build_binary_path(plugin_path):
+    """Build absolute plugin binary path."""
+    return normalized_path(os.path.join(plugin_path, _library_filename()))
+
+
+def _resolve_binary_path(plugin_path):
+    """Resolve the best binary path for the current platform."""
+    operating_system = _get_operating_system_name()
+    for filename in _candidate_binary_filenames(operating_system):
+        candidate = normalized_path(os.path.join(plugin_path, filename))
+        if os.path.isfile(candidate):
+            return candidate
+    return _build_binary_path(plugin_path)
+
+
+def _is_minor_version_folder(name):
+    """Return True for folders in Major.Minor format."""
     parts = name.split(".")
     return len(parts) == 2 and all(part.isdigit() for part in parts)
 
 
-def _resolve_version_folder() -> str:
+def _resolve_version_folder():
+    """Resolve the best available version folder for the running Nuke."""
     requested = _get_nuke_version()
     plugin_bin_root = os.path.join(INSTALLATION_PATH, PLUGIN_BIN_DIRECTORY)
 
@@ -93,7 +164,9 @@ def _resolve_version_folder() -> str:
         return requested
 
     try:
-        requested_major, requested_minor = (int(part) for part in requested.split(".", 1))
+        requested_major, requested_minor = (
+            int(part) for part in requested.split(".", 1)
+        )
     except ValueError:
         return requested
 
@@ -108,7 +181,10 @@ def _resolve_version_folder() -> str:
 
     lower_or_equal = [entry for minor, entry in same_major if minor <= requested_minor]
     if lower_or_equal:
-        selected = max(lower_or_equal, key=lambda version: int(version.split(".", 1)[1]))
+        selected = max(
+            lower_or_equal,
+            key=lambda version: int(version.split(".", 1)[1]),
+        )
     else:
         selected = min(
             (entry for _, entry in same_major),
@@ -116,38 +192,14 @@ def _resolve_version_folder() -> str:
         )
 
     logger.warning(
-        "%s binary folder '%s' not found, using '%s' fallback.",
-        NODE_CLASS_NAME,
+        "TVectorBlur binary folder '%s' not found, using '%s' fallback.",
         requested,
         selected,
     )
     return selected
 
 
-def _legacy_arch_folders() -> list[str]:
-    architecture = (platform.machine() or platform.processor() or "").strip().lower()
-    if architecture in {"amd64", "x64", "x86_64", "x86-64", "em64t"}:
-        return ["x86_64"]
-    if architecture in {"arm64", "aarch64"}:
-        return ["aarch64", "x86_64"]
-    return []
-
-
-def _candidate_plugin_paths() -> list[str]:
-    version_folder = _resolve_version_folder()
-    os_name = _get_operating_system_name()
-    base_path = os.path.join(INSTALLATION_PATH, PLUGIN_BIN_DIRECTORY, version_folder, os_name)
-    candidates = [normalized_path(base_path)]
-    for arch_folder in _legacy_arch_folders():
-        candidates.append(normalized_path(os.path.join(base_path, arch_folder)))
-    return candidates
-
-
-def _build_binary_path(plugin_path: str) -> str:
-    return normalized_path(os.path.join(plugin_path, _library_filename()))
-
-
-def _is_plugin_path_registered(plugin_path: str) -> bool:
+def _is_plugin_path_registered(plugin_path):
     target = normalized_path(plugin_path)
     try:
         return any(normalized_path(path) == target for path in nuke.pluginPath())
@@ -155,50 +207,63 @@ def _is_plugin_path_registered(plugin_path: str) -> bool:
         return False
 
 
-def _ensure_plugin_path_registered(plugin_path: str) -> None:
+def _is_node_class_available():
+    return hasattr(nuke, "nodes") and hasattr(nuke.nodes, NODE_CLASS_NAME)
+
+
+def _ensure_plugin_path_registered(plugin_path):
     if _is_plugin_path_registered(plugin_path):
         return
     nuke.pluginAddPath(str(plugin_path))  # ty:ignore[unresolved-attribute]
 
 
-def _is_node_class_available() -> bool:
-    return hasattr(nuke, "nodes") and hasattr(nuke.nodes, NODE_CLASS_NAME)
-
-
-def _load_binary(binary_path: str) -> None:
+def _load_binary(binary_path):
     try:
         nuke.load(binary_path)  # ty:ignore[unresolved-attribute]
     except Exception as error:
-        raise PluginLoadError(
-            f"Unable to load '{NODE_CLASS_NAME}' from '{binary_path}': {error}"
-        ) from error
+        logger.debug("Direct binary load failed for '%s': %s", binary_path, error)
+        try:
+            nuke.load(NODE_CLASS_NAME)  # ty:ignore[unresolved-attribute]
+        except Exception as fallback_error:
+            raise PluginLoadError(
+                "Unable to load '{}' from '{}': {}".format(
+                    NODE_CLASS_NAME,
+                    binary_path,
+                    fallback_error,
+                ),
+            )
 
     if not _is_node_class_available():
         raise PluginLoadError(
-            f"Binary '{binary_path}' loaded but node class '{NODE_CLASS_NAME}' is unavailable."
+            "Binary '{}' loaded but node class '{}' is unavailable.".format(
+                binary_path,
+                NODE_CLASS_NAME,
+            ),
         )
 
 
-def ensure_node_class_loaded() -> str:
-    plugin_path = next((path for path in _candidate_plugin_paths() if os.path.isdir(path)), "")
-    if not plugin_path:
+def ensure_node_class_loaded():
+    """Ensure plugin path is present and node class is actually loadable."""
+    plugin_path = _build_plugin_path()
+    if not os.path.isdir(plugin_path):
         raise PluginNotFoundError(
             (
-                f"{NODE_CLASS_NAME} is installed, but this Nuke version "
-                f"'{nuke.NUKE_VERSION_STRING}' is not available in this package."
-            )
+                "TVectorBlur is installed, but this Nuke version '{}' is not available "
+                "in this package."
+            ).format(nuke.NUKE_VERSION_STRING),
         )
 
-    binary_path = _build_binary_path(plugin_path)
+    binary_path = _resolve_binary_path(plugin_path)
     if not os.path.isfile(binary_path):
-        raise PluginNotFoundError(f"{NODE_CLASS_NAME} binary was not found at '{binary_path}'.")
+        raise PluginNotFoundError("TVectorBlur binary was not found at '{}'.".format(binary_path))
 
     _ensure_plugin_path_registered(plugin_path)
     _load_binary(binary_path)
     return plugin_path
 
 
-def add_plugin_path() -> str:
+def add_plugin_path():
+    """Add plugin path to Nuke if found and return the resolved path."""
     os.environ[PLUGIN_LOADED_ENV_VAR] = "0"
     os.environ.pop(PLUGIN_BINARY_PATH_ENV_VAR, None)
 
@@ -208,11 +273,12 @@ def add_plugin_path() -> str:
     return plugin_path
 
 
-def add_plugin_path_safe() -> bool:
+def add_plugin_path_safe():
+    """Add plugin path to Nuke if found, otherwise log failure."""
     try:
         plugin_path = add_plugin_path()
-        logger.info("%s plugin loaded successfully from '%s'.", NODE_CLASS_NAME, plugin_path)
+        logger.info("TVectorBlur plugin loaded successfully from '%s'.", plugin_path)
         return True
-    except Exception:
-        logger.exception("%s plugin loading failed.", NODE_CLASS_NAME)
+    except (PluginNotFoundError, UnsupportedSystemError, PluginLoadError):
+        logger.exception("TVectorBlur plugin loading failed.")
         return False

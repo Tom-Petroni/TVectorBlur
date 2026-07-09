@@ -1,4 +1,4 @@
-"""Menu entry point for TVectorBlur."""
+"""Plugin creation script for user interface in Nuke."""
 
 import logging
 
@@ -11,5 +11,5 @@ logger = logging.getLogger(__name__)
 
 try:
     add_menu()
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - Nuke runtime dependency
     logger.exception("Unexpected failure while creating the TVectorBlur menu.")

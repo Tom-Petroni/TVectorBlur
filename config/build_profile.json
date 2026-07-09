@@ -1,0 +1,6 @@
+{
+    "plugin_key":  "TVectorBlur",
+    "plugin_binary_name":  "TVectorBlur",
+    "backend":  "cuda",
+    "notes":  "Set backend to cpu, cuda, or hybrid depending on the node implementation."
+}

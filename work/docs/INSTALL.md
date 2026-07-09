@@ -1,38 +1,43 @@
-# Installation
+# Install
 
-## User install
+## What to Ship
 
-1. Unzip the release package.
-2. Copy the `TVectorBlur` folder into your `.nuke` directory.
-3. If your setup does not already scan that folder automatically, add its path from your global `.nuke/init.py`.
-4. Restart Nuke.
+The folder to install into `.nuke` is the package under `publish/`.
 
-## Studio install
-
-1. Put the `TVectorBlur` package on your central plugin share.
-2. Add the package root to your studio Nuke package bootstrap.
-3. Deploy the matching binary set for each supported Nuke version and operating system.
-
-## Package layout
-
-The runtime expects this structure:
+Typical payload:
 
 ```text
-TVectorBlur/
+publish/
   init.py
-  menu.py
-  _plugin_loader.py
-  resources/
-  bin/<major.minor>/<os>/
+  <PluginName>/
+    init.py
+    menu.py
+    resources/
+    bin/
+      <version>/<os>/<arch>/<binary>
 ```
 
-Examples:
+## End User Install
 
-- `bin/16.0/windows/TVectorBlur.dll`
-- `bin/16.0/linux/TVectorBlur.so`
+1. Copy `publish/init.py` into the user's `.nuke` directory.
+2. Copy the `publish/<PluginName>/` folder into the same `.nuke` directory.
+3. Restart Nuke.
 
-## Troubleshooting
+Optional fallback in `.nuke/init.py`:
 
-- If the node does not appear, check the Nuke script editor for loader messages.
-- If the binary does not load, verify that the package contains a matching `bin/<major.minor>/<os>` folder.
-- Linux builds require a Linux Nuke SDK build environment. Windows binaries cannot be reused on Linux.
+```python
+import nuke
+nuke.pluginAddPath("./<PluginName>")
+```
+
+## Verify
+
+After launch:
+
+- the plugin package should be discoverable by Nuke
+- the node class should load without missing binary errors
+- the expected menu entry should appear
+
+If loading fails, first verify that the correct binary exists under:
+
+`<PluginName>/bin/<nuke_version>/<os>/<arch>/`

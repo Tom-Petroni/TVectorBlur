@@ -12,9 +12,15 @@ use crate::{
 
 fn is_nuke_source_ready(version: &str) -> bool {
     let root = nuke_source_directory(version);
-    root.join("include").is_dir()
-        && (root.join("cmake").join("NukeConfig.cmake").is_file()
-            || root.join("NukeConfig.cmake").is_file())
+    let ddimage_artifact = if cfg!(windows) {
+        root.join("DDImage.lib")
+    } else if cfg!(target_os = "linux") {
+        root.join("libDDImage.so")
+    } else {
+        root.join("libDDImage.dylib")
+    };
+
+    root.join("include").is_dir() && ddimage_artifact.is_file()
 }
 
 pub async fn compile_nuke(
@@ -69,10 +75,25 @@ fn is_crosscompiling(target: TargetPlatform) -> bool {
 fn packaged_binary_name(target: TargetPlatform) -> String {
     match target {
         TargetPlatform::Windows => "TVectorBlur.dll",
-        TargetPlatform::Linux => "TVectorBlur.so",
-        TargetPlatform::MacosAarch64 | TargetPlatform::MacosX86_64 => "TVectorBlur.dylib",
+        TargetPlatform::Linux => "libTVectorBlur.so",
+        TargetPlatform::MacosAarch64 | TargetPlatform::MacosX86_64 => "libTVectorBlur.dylib",
     }
     .to_string()
+}
+
+fn packaged_os_name(target: TargetPlatform) -> &'static str {
+    match target {
+        TargetPlatform::Windows => "windows",
+        TargetPlatform::Linux => "linux",
+        TargetPlatform::MacosAarch64 | TargetPlatform::MacosX86_64 => "macos",
+    }
+}
+
+fn packaged_arch_name(target: TargetPlatform) -> &'static str {
+    match target {
+        TargetPlatform::Windows | TargetPlatform::Linux | TargetPlatform::MacosX86_64 => "x86_64",
+        TargetPlatform::MacosAarch64 => "aarch64",
+    }
 }
 
 fn powershell_command() -> &'static str {
@@ -92,15 +113,18 @@ fn powershell_command() -> &'static str {
 async fn compile_native(version: &str, target: TargetPlatform) -> Result<PathBuf, anyhow::Error> {
     let work_root = crate_root();
     let sources_directory = nuke_source_directory(version);
+    log::info!(
+        "Using extracted Nuke root for {} on {}: {}",
+        version,
+        target,
+        sources_directory.display()
+    );
     let binary_path = work_root
         .join("TVectorBlur")
         .join("bin")
         .join(version)
-        .join(match target {
-            TargetPlatform::Windows => "windows",
-            TargetPlatform::Linux => "linux",
-            TargetPlatform::MacosAarch64 | TargetPlatform::MacosX86_64 => "macos",
-        })
+        .join(packaged_os_name(target))
+        .join(packaged_arch_name(target))
         .join(packaged_binary_name(target));
 
     match target {

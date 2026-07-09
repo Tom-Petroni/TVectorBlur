@@ -1,32 +1,29 @@
-/work/build/
-/work/dist/
+# Build outputs
 /work/target/
-/work/scripts/__pycache__/
-/work/TVectorBlur/bin/*
-!/work/TVectorBlur/bin/.gitkeep
-/.vs/
-/.idea/
-/.vscode/
-*.user
-*.suo
-*.opensdf
-*.VC.db
-*.VC.VC.opendb
-*.obj
-*.o
-*.pdb
-*.ilk
-*.exp
-*.lib
-*.a
-*.so
-*.dylib
-*.dll
-*.zip
-__pycache__/
+/.artifact-stage/
+/dist/
+
+# Runtime artifacts
+**/__pycache__/
 *.pyc
-!/publish/TVectorBlur/bin/
-!/publish/TVectorBlur/bin/**/
-!/publish/TVectorBlur/bin/**/*.dll
-!/publish/TVectorBlur/bin/**/*.so
-!/publish/TVectorBlur/bin/**/*.dylib
+*.pyo
+
+# Plugin binaries produced locally
+**/*.dll
+**/*.so
+**/*.dylib
+**/*.pdb
+**/*.exp
+**/*.lib
+
+# Keep published binaries versioned for end users (clone + drag-and-drop install)
+!publish/**/bin/**/*.dll
+!publish/**/bin/**/*.so
+!publish/**/bin/**/*.dylib
+!publish/**/bin/**/*.pdb
+!publish/**/bin/**/*.exp
+!publish/**/bin/**/*.lib
+
+# Local temp/debug files
+*.log
+*.tmp

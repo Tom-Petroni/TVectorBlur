@@ -1,4 +1,4 @@
-name: Auto Tag From VERSION
+﻿name: Auto Tag From VERSION
 
 on:
   push:
@@ -29,7 +29,11 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="$(tr -d '[:space:]' < VERSION)"
+          VERSION="$(python - <<'PY'
+          from pathlib import Path
+          print(Path("VERSION").read_text(encoding="utf-8-sig").strip())
+          PY
+          )"
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::VERSION must be SemVer X.Y.Z, got '$VERSION'"
             exit 1
@@ -58,3 +62,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
+
+      - name: Summary
+        shell: bash
+        run: |
+          if [[ "${{ steps.exists.outputs.exists }}" == "true" ]]; then
+            echo "No new tag created (already exists)."
+          else
+            echo "Created tag ${{ steps.version.outputs.tag }} from VERSION=${{ steps.version.outputs.version }}"
+          fi

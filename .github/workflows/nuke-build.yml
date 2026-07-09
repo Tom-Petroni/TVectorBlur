@@ -1,10 +1,12 @@
-name: Nuke Plugin Build (CUDA)
+name: Nuke Build
 
 on:
   pull_request:
   push:
     branches:
       - main
+    paths-ignore:
+      - "publish/**"
     tags:
       - "v*"
   workflow_dispatch:
@@ -13,8 +15,13 @@ on:
         description: "Comma-separated supported Nuke minor versions"
         required: false
         default: "13.0,13.1,13.2,14.0,14.1,15.0,15.1,15.2,16.0,17.0"
-      cuda_backend:
-        description: "Build CUDA backend binaries"
+      include_windows:
+        description: "Build Windows binaries"
+        required: false
+        type: boolean
+        default: true
+      include_linux:
+        description: "Build Linux binaries"
         required: false
         type: boolean
         default: true
@@ -24,24 +31,52 @@ permissions:
 
 defaults:
   run:
-    shell: bash
     working-directory: work
 
 concurrency:
-  group: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && format('build-{0}-{1}', github.workflow, github.ref) || format('smoke-{0}-{1}', github.workflow, github.ref) }}
+  group: ${{ format('build-{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
 
 jobs:
+  profile:
+    name: Resolve Build Profile
+    runs-on: ubuntu-latest
+    outputs:
+      plugin_key: ${{ steps.profile.outputs.plugin_key }}
+      plugin_binary_name: ${{ steps.profile.outputs.plugin_binary_name }}
+      backend: ${{ steps.profile.outputs.backend }}
+      needs_cuda_toolkit: ${{ steps.profile.outputs.needs_cuda_toolkit }}
+      xtask_cuda_flag: ${{ steps.profile.outputs.xtask_cuda_flag }}
+      supports_gpu_runtime_test: ${{ steps.profile.outputs.supports_gpu_runtime_test }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read build profile
+        id: profile
+        working-directory: .
+        shell: pwsh
+        run: |
+          $profile = ./tools/Get-NukeBuildProfile.ps1 -AsJson | ConvertFrom-Json
+          "plugin_key=$($profile.plugin_key)" >> $env:GITHUB_OUTPUT
+          "plugin_binary_name=$($profile.plugin_binary_name)" >> $env:GITHUB_OUTPUT
+          "backend=$($profile.backend)" >> $env:GITHUB_OUTPUT
+          "needs_cuda_toolkit=$($profile.needs_cuda_toolkit.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "xtask_cuda_flag=$($profile.xtask_cuda_flag)" >> $env:GITHUB_OUTPUT
+          "supports_gpu_runtime_test=$($profile.supports_gpu_runtime_test.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   smoke:
     name: Smoke Checks on ${{ matrix.runner }}
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+    needs:
+      - profile
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         runner:
           - ubuntu-latest
-          - windows-latest
+          - windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,86 +86,42 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            work -> target
 
       - name: Python syntax check
-        run: python -m compileall init.py TVectorBlur scripts xtask
+        shell: bash
+        run: |
+          python -m compileall init.py "${{ needs.profile.outputs.plugin_key }}" scripts
 
       - name: Check xtask
         run: cargo check -p xtask
 
   matrix:
-    name: Prepare Release Matrix
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    name: Prepare Build Matrix
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Generate build matrix
         id: generate
         working-directory: .
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_NUKE_VERSIONS: ${{ github.event.inputs.nuke_versions }}
+        shell: pwsh
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          supported_versions = ["13.0", "13.1", "13.2", "14.0", "14.1", "15.0", "15.1", "15.2", "16.0", "17.0"]
-
-          def parse_versions(raw: str):
-              if not raw:
-                  return []
-              return [version.strip() for version in raw.split(",") if version.strip()]
-
-          event_name = os.getenv("EVENT_NAME", "")
-          if event_name == "workflow_dispatch":
-              versions = parse_versions(os.getenv("INPUT_NUKE_VERSIONS", "")) or supported_versions
-          else:
-              versions = supported_versions
-
-          unsupported = [version for version in versions if version not in supported_versions]
-          if unsupported:
-              print("Unsupported Nuke versions requested: {}".format(", ".join(unsupported)), file=sys.stderr)
-              sys.exit(1)
-
-          targets = [
-              {
-                  "runner": "ubuntu-latest",
-                  "target_platform": "linux",
-                  "os_name": "linux",
-                  "lib_ext": "so",
-              },
-              {
-                  "runner": "windows-latest",
-                  "target_platform": "windows",
-                  "os_name": "windows",
-                  "lib_ext": "dll",
-              },
-          ]
-
-          include = []
-          for version in versions:
-              for target in targets:
-                  row = dict(target)
-                  row["nuke_version"] = version
-                  include.append(row)
-
-          matrix = {"include": include}
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
-              handle.write("matrix={}\n".format(json.dumps(matrix)))
-
-          print(json.dumps(matrix))
-          PY
+          $includeWindows = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_windows }}' -eq 'true' } else { $true }
+          $includeLinux = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_linux }}' -eq 'true' } else { $true }
+          $selectedVersions = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.nuke_versions }}' } else { '' }
+          $matrix = ./tools/Get-NukeBuildMatrix.ps1 -Mode build -SelectedVersions $selectedVersions -IncludeWindows:$includeWindows -IncludeLinux:$includeLinux -AsJson
+          "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
   build:
     name: Build Nuke ${{ matrix.nuke_version }} on ${{ matrix.target_platform }}
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: matrix
+    if: github.event_name != 'pull_request'
+    needs:
+      - matrix
+      - profile
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -144,19 +135,23 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            work -> target
 
-      - name: Set up MSVC environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Install Linux dependencies
+      - name: Free disk space on Linux runner
         if: runner.os == 'Linux'
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full
+          set -euo pipefail
+          echo "Disk space before cleanup:"
+          df -h
+
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af || true
+
+          echo "Disk space after cleanup:"
+          df -h
 
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
@@ -165,58 +160,100 @@ jobs:
           choco install 7zip lessmsi -y
 
       - name: Install CUDA toolkit
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.cuda_backend == 'true'
+        if: needs.profile.outputs.needs_cuda_toolkit == 'true'
         uses: Jimver/cuda-toolkit@v0.2.35
         with:
-          cuda: "12.4.1"
+          cuda: "12.6.0"
 
-      - name: Build and package plugin
+      - name: Verify MSVC toolchain
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path $vswhere)) {
+            throw "vswhere.exe not found at $vswhere"
+          }
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ([string]::IsNullOrWhiteSpace($installationPath)) {
+            throw "No Visual Studio installation with MSVC tools was found."
+          }
+          $vsDevCmd = Join-Path $installationPath 'Common7\Tools\VsDevCmd.bat'
+          if (-not (Test-Path $vsDevCmd)) {
+            throw "VsDevCmd.bat not found at $vsDevCmd"
+          }
+          Write-Host "Using VsDevCmd at $vsDevCmd"
+
+      - name: Build and package plugin on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          RUST_BACKTRACE: "1"
+          NUKE_VERSION: ${{ matrix.nuke_version }}
+          TARGET_PLATFORM: ${{ matrix.target_platform }}
+          XTASK_CUDA_FLAG: ${{ needs.profile.outputs.xtask_cuda_flag }}
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ([string]::IsNullOrWhiteSpace($installationPath)) {
+            throw "No Visual Studio installation with MSVC tools was found."
+          }
+          $vsDevCmd = Join-Path $installationPath 'Common7\Tools\VsDevCmd.bat'
+          if (-not (Test-Path $vsDevCmd)) {
+            throw "VsDevCmd.bat not found at $vsDevCmd"
+          }
+
+          $xtaskCudaFlag = $env:XTASK_CUDA_FLAG
+          $cudaArgs = if ([string]::IsNullOrWhiteSpace($xtaskCudaFlag)) { '' } else { " $xtaskCudaFlag" }
+          $repoWorkDir = Join-Path $env:GITHUB_WORKSPACE 'work'
+          $cmd = "`"$vsDevCmd`" -arch=amd64 -host_arch=amd64 && cd /d `"$repoWorkDir`" && cargo xtask --compile --nuke-versions $env:NUKE_VERSION --target-platform $env:TARGET_PLATFORM --output-to-package --limit-threads$cudaArgs"
+          cmd.exe /c $cmd
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Build and package plugin on Unix
+        if: runner.os != 'Windows'
         shell: bash
         env:
           RUST_BACKTRACE: "1"
-          TVECTORBLUR_CUDA_ARCHITECTURES: "75;86;89;90"
-          USE_CUDA: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.cuda_backend == 'true' }}
+          NUKE_VERSION: ${{ matrix.nuke_version }}
+          TARGET_PLATFORM: ${{ matrix.target_platform }}
+          XTASK_CUDA_FLAG: ${{ needs.profile.outputs.xtask_cuda_flag }}
         run: |
-          python - <<'PY'
-          import os
-          import subprocess
+          set -euo pipefail
+          args=(xtask --compile --nuke-versions "${NUKE_VERSION}" --target-platform "${TARGET_PLATFORM}" --output-to-package --limit-threads)
+          if [[ -n "${XTASK_CUDA_FLAG}" ]]; then
+            args+=("${XTASK_CUDA_FLAG}")
+          fi
+          cargo "${args[@]}"
 
-          command = [
-              "cargo",
-              "xtask",
-              "--compile",
-              "--nuke-versions",
-              "${{ matrix.nuke_version }}",
-              "--target-platform",
-              "${{ matrix.target_platform }}",
-              "--output-to-package",
-              "--limit-threads",
-          ]
-
-          if os.environ.get("USE_CUDA", "true").lower() != "true":
-              raise SystemExit("TVectorBlur requires the CUDA backend for hosted CI builds.")
-
-          print("Running:", " ".join(command))
-          subprocess.check_call(command)
-          PY
+      - name: Validate work bin layout
+        shell: pwsh
+        run: |
+          ../tools/Assert-NukeLayout.ps1 -BinRoot "${{ needs.profile.outputs.plugin_key }}/bin" -ConfigPath "../config/nuke_versions.json" -BuildProfilePath "../config/build_profile.json" -RequireVersion "${{ matrix.nuke_version }}" -RequireOs "${{ matrix.os_name }}"
 
       - name: Verify expected binary exists
         shell: bash
         env:
           NUKE_VERSION: ${{ matrix.nuke_version }}
           OS_NAME: ${{ matrix.os_name }}
+          ARCH_NAME: ${{ matrix.arch_name }}
           LIB_EXT: ${{ matrix.lib_ext }}
+          LIB_PREFIX: ${{ matrix.lib_prefix }}
+          PLUGIN_BINARY_NAME: ${{ needs.profile.outputs.plugin_binary_name }}
+          PLUGIN_KEY: ${{ needs.profile.outputs.plugin_key }}
         run: |
           python - <<'PY'
           import os
           import pathlib
 
           expected = (
-              pathlib.Path("TVectorBlur")
+              pathlib.Path(os.environ["PLUGIN_KEY"])
               / "bin"
               / os.environ["NUKE_VERSION"]
               / os.environ["OS_NAME"]
-              / f"TVectorBlur.{os.environ['LIB_EXT']}"
+              / os.environ["ARCH_NAME"]
+              / f"{os.environ['LIB_PREFIX']}{os.environ['PLUGIN_BINARY_NAME']}.{os.environ['LIB_EXT']}"
           )
           if not expected.is_file():
               raise SystemExit(f"Missing expected build output: {expected}")
@@ -226,23 +263,28 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tvectorblur-${{ matrix.nuke_version }}-${{ matrix.target_platform }}
+          name: ${{ needs.profile.outputs.plugin_key }}-${{ matrix.nuke_version }}-${{ matrix.target_platform }}
           if-no-files-found: error
           path: |
             work/README.md
             work/init.py
-            work/TVectorBlur/*.py
-            work/TVectorBlur/resources/*
-            work/TVectorBlur/bin/${{ matrix.nuke_version }}/${{ matrix.os_name }}/TVectorBlur.${{ matrix.lib_ext }}
+            work/${{ needs.profile.outputs.plugin_key }}/*.py
+            work/${{ needs.profile.outputs.plugin_key }}/resources/*
+            work/${{ needs.profile.outputs.plugin_key }}/bin/${{ matrix.nuke_version }}/${{ matrix.os_name }}/${{ matrix.arch_name }}/${{ matrix.lib_prefix }}${{ needs.profile.outputs.plugin_binary_name }}.${{ matrix.lib_ext }}
 
   bundle:
     name: Bundle Multi-Platform Package
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: build
+    if: github.event_name != 'pull_request'
+    needs:
+      - build
+      - profile
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -251,24 +293,52 @@ jobs:
       - name: Assemble package
         working-directory: .
         run: |
-          rm -rf package
           mkdir -p package
-          cp -R publish/. package/
+          copied_common="false"
+          plugin_key="${{ needs.profile.outputs.plugin_key }}"
+
           for artifact in dist/*; do
-            if [[ -d "$artifact/TVectorBlur/bin" ]]; then
-              rsync -a "$artifact/TVectorBlur/bin/" "package/TVectorBlur/bin/"
+            if [[ ! -d "$artifact" ]]; then
+              continue
+            fi
+
+            if [[ "$copied_common" == "false" ]]; then
+              rsync -a --exclude "${plugin_key}/bin" "$artifact/" "package/"
+              copied_common="true"
+            fi
+
+            if [[ -d "$artifact/${plugin_key}/bin" ]]; then
+              mkdir -p "package/${plugin_key}/bin"
+              rsync -a "$artifact/${plugin_key}/bin/" "package/${plugin_key}/bin/"
             fi
           done
+
+          if [[ "$copied_common" == "false" ]]; then
+            echo "No build artifacts found to assemble package." >&2
+            exit 1
+          fi
+
           find package -type d -name "__pycache__" -prune -exec rm -rf {} +
+
+      - name: Validate bundled package
+        working-directory: .
+        shell: pwsh
+        run: |
+          $includeWindows = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_windows }}' -eq 'true' } else { $true }
+          $includeLinux = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_linux }}' -eq 'true' } else { $true }
+          $selectedVersions = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.nuke_versions }}' } else { '' }
+          ./tools/Assert-NukeLayout.ps1 -BinRoot "package/${{ needs.profile.outputs.plugin_key }}/bin"
+          ./tools/Assert-NukeMatrixCompleteness.ps1 -BinRoot "package/${{ needs.profile.outputs.plugin_key }}/bin" -SelectedVersions $selectedVersions -IncludeWindows:$includeWindows -IncludeLinux:$includeLinux
 
       - name: Create zip
         id: zip
         working-directory: .
         run: |
+          plugin_key="${{ needs.profile.outputs.plugin_key }}"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            ZIP_NAME="TVectorBlur-${GITHUB_REF_NAME}.zip"
+            ZIP_NAME="${plugin_key}-${GITHUB_REF_NAME}.zip"
           else
-            ZIP_NAME="TVectorBlur-${GITHUB_SHA}.zip"
+            ZIP_NAME="${plugin_key}-${GITHUB_SHA}.zip"
           fi
           cd package
           zip -r "../${ZIP_NAME}" .
@@ -285,7 +355,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: TVectorBlur ${{ github.ref_name }}
+          name: ${{ needs.profile.outputs.plugin_key }} ${{ github.ref_name }}
           files: ${{ steps.zip.outputs.zip_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
@@ -294,7 +364,9 @@ jobs:
   sync_publish:
     name: Sync Publish Folder To Repo
     if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: build
+    needs:
+      - build
+      - profile
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -309,27 +381,55 @@ jobs:
         with:
           path: dist
 
-      - name: Rebuild publish binaries from artifacts
+      - name: Rebuild publish package from artifacts
         working-directory: .
         run: |
-          rm -rf publish/TVectorBlur/bin
-          mkdir -p publish/TVectorBlur/bin
+          rm -rf publish
+          mkdir -p publish
+          copied_common="false"
+          plugin_key="${{ needs.profile.outputs.plugin_key }}"
+
           for artifact in dist/*; do
-            if [[ -d "$artifact/TVectorBlur/bin" ]]; then
-              rsync -a "$artifact/TVectorBlur/bin/" "publish/TVectorBlur/bin/"
+            if [[ ! -d "$artifact" ]]; then
+              continue
+            fi
+
+            if [[ "$copied_common" == "false" ]]; then
+              rsync -a --exclude "${plugin_key}/bin" "$artifact/" "publish/"
+              copied_common="true"
+            fi
+
+            if [[ -d "$artifact/${plugin_key}/bin" ]]; then
+              mkdir -p "publish/${plugin_key}/bin"
+              rsync -a "$artifact/${plugin_key}/bin/" "publish/${plugin_key}/bin/"
             fi
           done
+
+          if [[ "$copied_common" == "false" ]]; then
+            echo "No build artifacts found to sync into publish/." >&2
+            exit 1
+          fi
+
+      - name: Validate publish bin layout
+        working-directory: .
+        shell: pwsh
+        run: |
+          ./tools/Assert-NukeLayout.ps1 -BinRoot "publish/${{ needs.profile.outputs.plugin_key }}/bin"
+          $includeWindows = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_windows }}' -eq 'true' } else { $true }
+          $includeLinux = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.include_linux }}' -eq 'true' } else { $true }
+          $selectedVersions = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ github.event.inputs.nuke_versions }}' } else { '' }
+          ./tools/Assert-NukeMatrixCompleteness.ps1 -BinRoot "publish/${{ needs.profile.outputs.plugin_key }}/bin" -SelectedVersions $selectedVersions -IncludeWindows:$includeWindows -IncludeLinux:$includeLinux
 
       - name: Commit publish updates
         working-directory: .
         run: |
-          if git diff --quiet -- publish/TVectorBlur/bin; then
+          if git diff --quiet -- publish; then
             echo "No publish changes to commit."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add publish/TVectorBlur/bin
+          git add publish
           git commit -m "chore(publish): sync compiled binaries [skip ci]"
           git push origin HEAD:main

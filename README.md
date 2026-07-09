@@ -1,109 +1,118 @@
-# TVectorBlur
+# Nuke Plugin Template
 
-CUDA vector blur node for Nuke, structured like `TBlur` with a clean split between:
+Generic Nuke plugin template with multi-version build automation for Windows and Linux.
 
-- `publish/`: the install payload copied into `.nuke`
-- `work/`: source, build tooling, smoke tests, and local package staging
+## Purpose
 
-## Install
+This repository is a reusable starting point for building Nuke nodes with:
 
-1. Copy everything from `publish/` into your `.nuke/` folder.
-2. Restart Nuke.
+- native C++ or Rust/C++ plugin code
+- optional CPU, CUDA, or hybrid backends
+- GitHub Actions matrix builds across supported Nuke versions
+- packaged output ready to drop into `.nuke`
 
-Expected result:
+It is intentionally template-first. The repository should not be treated as a product node on its own.
 
-- `C:/Users/<user>/.nuke/init.py`
-- `C:/Users/<user>/.nuke/TVectorBlur/`
+## Supported Build Matrix
 
-## Compatibility
-
-- Nuke: `13.0`, `13.1`, `13.2`, `14.0`, `14.1`, `15.0`, `15.1`, `15.2`, `16.0`, `17.0`
+- Nuke: `13.0` -> `17.0`
 - OS: Windows, Linux
-- Backend: CUDA
+- Architecture: `x86_64`
 
-Binaries are versioned in:
+Binary layout:
 
-`publish/TVectorBlur/bin/<nuke_version>/<os>/`
+`publish/<PluginName>/bin/<nuke_version>/<os>/<arch>/`
 
-## Build From Source
+Local working layout during development:
 
-GitHub-hosted build command, same idea as `TBlur` / `TNoise`:
+`work/<PluginName>/bin/<nuke_version>/<os>/<arch>/`
 
-```bash
-cd work
-cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads
+## Current Template Name
+
+The bundled placeholder implementation uses the generic name `TVectorBlur`.
+
+You are expected to rename it for your real node project with the scaffold command below.
+
+## Scaffold a New Node
+
+From the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\Initialize-NukeTemplate.ps1 -NodeName MyNode -Backend cpu
 ```
 
-Windows:
+Examples:
+
+- CPU node: `-NodeName MyNode -Backend cpu`
+- CUDA node: `-NodeName MyNode -Backend cuda`
+- hybrid node: `-NodeName MyNode -Backend hybrid`
+
+What the scaffold updates:
+
+- `config/build_profile.json`
+- `node.json`
+- `work/<PluginName>/`
+- `publish/<PluginName>/`
+- `work/crates/<plugin-name>-nuke/`
+- C++ file stems, package-qualified imports, and expected binary names
+
+Detailed workflow:
+
+- [work/docs/TEMPLATE_WORKFLOW.md](work/docs/TEMPLATE_WORKFLOW.md)
+
+## Local Build
 
 ```powershell
 cd work
-./scripts/build_windows.ps1 -NukeRoot "C:\Program Files\Nuke16.0v9" -CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
+cargo xtask --compile --nuke-versions 17.0 --target-platform windows --output-to-package --limit-threads
 ```
 
-All installed Windows versions:
+Local build output is written to the source workspace first:
 
-```powershell
-cd work
-./build_all_windows_versions.ps1 -CudaRoot "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
-```
+`work/TVectorBlur/bin/17.0/windows/x86_64/TVectorBlur.dll`
 
-Linux:
+Other targets:
 
-```bash
-cd work
-./scripts/build_linux.sh /opt/Nuke16.0v9
-```
+- native Linux: `--target-platform linux`
+- Windows to Linux via WSL: recommended for local Linux builds
+- Windows to Linux via Zig: `--use-zig --target-platform linux`
 
-Linux self-hosted runner:
+## GitHub Actions
 
-- setup guide: `work/docs/LINUX_RUNNER.md`
-- env generator: `work/scripts/write_linux_runner_env.sh`
-- host validator: `work/scripts/check_linux_runner.sh`
-
-## CI / Releases
-
-Main workflows:
+Main workflow:
 
 - `.github/workflows/nuke-build.yml`
+
+It:
+
+- downloads Nuke installers and extracts the required SDK pieces
+- builds the configured versions on GitHub-hosted runners
+- writes per-job binaries into `work/<PluginName>/bin/...`
+- validates the expected package layout
+- produces a bundled install artifact
+- syncs `publish/` from validated build artifacts after successful `main` builds
+
+Optional runtime smoke workflow:
+
 - `.github/workflows/nuke-runtime-smoke.yml`
-- `.github/workflows/version-tag.yml`
-- `work/CI_TESTING.md`
 
-`nuke-build.yml` is now the hosted pipeline:
-
-- downloads the Nuke installers per supported minor version
-- extracts a buildable local Nuke root into `work/target/nuke/deps/`
-- builds `TVectorBlur` on GitHub-hosted Windows and Linux runners
-- bundles the multi-version package and syncs `publish/`
-
-Runner environment variables expected by the self-hosted workflows:
-
-- `NUKE_13_0_ROOT`
-- `NUKE_13_1_ROOT`
-- `NUKE_13_2_ROOT`
-- `NUKE_14_0_ROOT`
-- `NUKE_14_1_ROOT`
-- `NUKE_15_0_ROOT`
-- `NUKE_15_1_ROOT`
-- `NUKE_15_2_ROOT`
-- `NUKE_16_0_ROOT`
-- `NUKE_17_0_ROOT`
-- `NUKE_13_0_EXECUTABLE`
-- `NUKE_13_1_EXECUTABLE`
-- `NUKE_13_2_EXECUTABLE`
-- `NUKE_14_0_EXECUTABLE`
-- `NUKE_14_1_EXECUTABLE`
-- `NUKE_15_0_EXECUTABLE`
-- `NUKE_15_1_EXECUTABLE`
-- `NUKE_15_2_EXECUTABLE`
-- `NUKE_16_0_EXECUTABLE`
-- `NUKE_17_0_EXECUTABLE`
+It requires self-hosted runners with a real Nuke installation and valid license.
 
 ## Repository Layout
 
 ```text
-TVectorBlur/
+Template-Node-Nuke/
+  config/    # build profile + version matrix
   publish/   # install payload for .nuke
-  work/      # source, native build scripts, smoke helpers
+  tools/     # scaffold + validation helpers
+  work/      # source workspace, docs, crate, scripts, xtask
 ```
+
+## Notes
+
+- The template infrastructure has already been validated in CI across the supported matrix.
+- New nodes should usually compile with minimal infrastructure work, but version-specific code adjustments can still be needed depending on the NDK APIs you use.
+
+## License
+
+Commercial usage is governed by `LICENSE` and `EULA.md`.

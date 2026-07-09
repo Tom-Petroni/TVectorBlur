@@ -7,6 +7,10 @@ pub fn crate_root() -> PathBuf {
         .to_path_buf()
 }
 
+pub fn target_directory() -> PathBuf {
+    PathBuf::from(env!("TARGET_DIRECTORY")).to_path_buf()
+}
+
 pub fn path_to_string(path: &Path) -> Result<String> {
     Ok(path
         .to_str()

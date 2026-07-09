@@ -54,6 +54,9 @@ struct Args {
 
     #[clap(long, action = ArgAction::SetTrue)]
     limit_threads: bool,
+
+    #[clap(long, action = ArgAction::SetTrue)]
+    cuda_backend: bool,
 }
 
 #[tokio::main]

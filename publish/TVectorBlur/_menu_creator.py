@@ -1,7 +1,5 @@
 """Functions that handle creation of the Nuke menu."""
 
-from __future__ import annotations
-
 import logging
 import os
 
@@ -33,35 +31,43 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 
-def create_node() -> None:
+def create_node():
+    """Create node and force-load plugin binary first."""
     try:
         ensure_node_class_loaded()
         nuke.createNode(NODE_CLASS_NAME)
     except Exception as error:
-        nuke.tprint(f"[{NODE_CLASS_NAME}] Unable to create node '{NODE_CLASS_NAME}': {error}")
+        nuke.tprint("[TVectorBlur] Unable to create node '{}': {}".format(NODE_CLASS_NAME, error))
 
 
-def _create_menu() -> None:
+def _create_menu():
+    """Create the Nuke menu and add the command."""
     toolbar = nuke.menu("Nodes")
     menu = toolbar.findItem(MENU_NAME)
     if menu is None:
         menu = toolbar.addMenu(MENU_NAME, ICON_FILENAME)
 
-    command_path = f"{MENU_NAME}/{NODE_CLASS_NAME}"
+    command_path = "{}/{}".format(MENU_NAME, NODE_CLASS_NAME)
     if toolbar.findItem(command_path) is None:
-        callback = f"import {__name__} as _menu; _menu.create_node()"
-        menu.addCommand(NODE_CLASS_NAME, callback, None, ICON_FILENAME)
+        callback = "import {} as _tn_menu; _tn_menu.create_node()".format(__name__)
+        menu.addCommand(
+            NODE_CLASS_NAME,
+            callback,
+            None,
+            ICON_FILENAME,
+        )
 
 
-def add_menu() -> None:
+def add_menu():
+    """Always create the menu; log plugin load state for diagnostics."""
     _add_menu_dependencies_to_plugin_path()
     _create_menu()
 
     if os.getenv(PLUGIN_LOADED_ENV_VAR) != "1":
-        logger.warning("%s menu created, but plugin binary is not loaded yet.", NODE_CLASS_NAME)
+        logger.warning("TVectorBlur menu created, but plugin binary is not loaded yet.")
 
 
-def _add_menu_dependencies_to_plugin_path() -> None:
+def _add_menu_dependencies_to_plugin_path():
     resources_path = normalized_path(RESOURCES_PATH)
     if os.getenv(RESOURCE_PATH_ADDED_ENV_VAR) == resources_path:
         return

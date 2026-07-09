@@ -1,0 +1,42 @@
+{
+  "supported_versions": [
+    "13.0",
+    "13.1",
+    "13.2",
+    "14.0",
+    "14.1",
+    "15.0",
+    "15.1",
+    "15.2",
+    "16.0",
+    "17.0"
+  ],
+  "build_targets": [
+    {
+      "runner": "ubuntu-latest",
+      "target_platform": "linux",
+      "os_name": "linux",
+      "arch_name": "x86_64",
+      "lib_ext": "so",
+      "lib_prefix": "lib"
+    },
+    {
+      "runner": "windows-2022",
+      "target_platform": "windows",
+      "os_name": "windows",
+      "arch_name": "x86_64",
+      "lib_ext": "dll",
+      "lib_prefix": ""
+    }
+  ],
+  "runtime_targets": {
+    "windows": {
+      "runner_labels": ["self-hosted", "nuke", "windows"],
+      "platform_name": "windows"
+    },
+    "linux": {
+      "runner_labels": ["self-hosted", "nuke", "linux"],
+      "platform_name": "linux"
+    }
+  }
+}
