@@ -47,6 +47,7 @@ jobs:
 
       - name: Detect VERSION change
         id: detect
+        working-directory: .
         shell: bash
         run: |
           VERSION="$(tr -d '[:space:]' < VERSION)"

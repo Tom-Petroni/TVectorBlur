@@ -2,7 +2,7 @@
   "node": {
     "class_name": "TVectorBlur",
     "type": "Iop",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "vendor": "Thomas Petroni"
   },
   "build": {

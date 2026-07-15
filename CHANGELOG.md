@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026-07-15 -
+2.0.2
+- Fixed the release detector to read VERSION from the repository root in GitHub Actions.
+
+## 2026-07-15 -
 2.0.1
 - TVectorBlur aligned to the TCollection node repository standard.
 - GitHub Actions build and runtime workflows normalized.
