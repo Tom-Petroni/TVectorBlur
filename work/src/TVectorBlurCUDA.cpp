@@ -12,7 +12,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <cstdio>
@@ -124,7 +123,6 @@ public:
       , mix_(1.0f)
       , offset_(0.0f)
       , cuda_initialized_(false)
-      , cuda_logged_ready_(false)
       , cuda_gpu_name_("Unknown")
       , cache_valid_(false)
       , cache_x_(0)
@@ -567,8 +565,6 @@ private:
     }
 
     cuda_initialized_ = true;
-    std::fprintf(stderr, "[TVectorBlur] CUDA initialized on GPU: %s\n", cuda_gpu_name_.c_str());
-    std::fflush(stderr);
     return true;
   }
 
@@ -616,19 +612,14 @@ private:
 
     ensure_host_buffers();
 
-    const auto fetch_start = std::chrono::steady_clock::now();
     if (!fetch_source_rgba()) {
       cache_valid_ = false;
       return false;
     }
-    const auto source_end = std::chrono::steady_clock::now();
     if (!fetch_vectors_rg()) {
       cache_valid_ = false;
       return false;
     }
-    const auto vectors_end = std::chrono::steady_clock::now();
-
-    const auto blur_vectors_end = std::chrono::steady_clock::now();
 
     const tvb::Params params = build_params();
 
@@ -639,8 +630,6 @@ private:
       return false;
     }
 
-    const bool log_first_render = !cuda_logged_ready_;
-    const auto cuda_start = std::chrono::steady_clock::now();
     if (!tvb::run_cuda(
             cuda_buffers_,
             source_data_,
@@ -658,32 +647,7 @@ private:
       cache_valid_ = false;
       return false;
     }
-    const auto cuda_end = std::chrono::steady_clock::now();
     update_planar_cache();
-    const auto layout_end = std::chrono::steady_clock::now();
-
-    if (log_first_render) {
-      const double fetch_ms = std::chrono::duration<double, std::milli>(source_end - fetch_start).count();
-      const double vectors_ms = std::chrono::duration<double, std::milli>(vectors_end - source_end).count();
-      const double vector_blur_ms = std::chrono::duration<double, std::milli>(blur_vectors_end - vectors_end).count();
-      const double cuda_ms = std::chrono::duration<double, std::milli>(cuda_end - cuda_start).count();
-      const double layout_ms = std::chrono::duration<double, std::milli>(layout_end - cuda_end).count();
-      const double total_ms = std::chrono::duration<double, std::milli>(layout_end - fetch_start).count();
-      std::fprintf(
-          stderr,
-          "[TVectorBlur] first render %dx%d on %s: source %.2f ms, vectors %.2f ms, vec blur %.2f ms, cuda %.2f ms, layout %.2f ms, total %.2f ms.\n",
-          cache_w_,
-          cache_h_,
-          cuda_gpu_name_.c_str(),
-          fetch_ms,
-          vectors_ms,
-          vector_blur_ms,
-          cuda_ms,
-          layout_ms,
-          total_ms);
-      std::fflush(stderr);
-      cuda_logged_ready_ = true;
-    }
 
     cache_hash_ = current_hash;
     cache_valid_ = true;
@@ -719,7 +683,6 @@ private:
   float offset_;
 
   bool cuda_initialized_;
-  bool cuda_logged_ready_;
   std::string cuda_gpu_name_;
 
   bool cache_valid_;
