@@ -33,46 +33,76 @@ permissions:
   contents: read
 
 jobs:
-  profile:
-    name: Resolve Build Profile
-    runs-on: ubuntu-latest
-    outputs:
-      plugin_key: ${{ steps.profile.outputs.plugin_key }}
-      supports_gpu_runtime_test: ${{ steps.profile.outputs.supports_gpu_runtime_test }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read build profile
-        id: profile
-        shell: pwsh
-        run: |
-          $profile = ./tools/Get-NukeBuildProfile.ps1 -AsJson | ConvertFrom-Json
-          "plugin_key=$($profile.plugin_key)" >> $env:GITHUB_OUTPUT
-          "supports_gpu_runtime_test=$($profile.supports_gpu_runtime_test.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-
   matrix:
     name: Prepare Runtime Matrix
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Generate runtime matrix
         id: generate
-        shell: pwsh
+        env:
+          INPUT_NUKE_VERSIONS: ${{ github.event.inputs.nuke_versions }}
+          INPUT_INCLUDE_WINDOWS: ${{ github.event.inputs.include_windows }}
+          INPUT_INCLUDE_LINUX: ${{ github.event.inputs.include_linux }}
         run: |
-          $matrix = ./tools/Get-NukeBuildMatrix.ps1 -Mode runtime -SelectedVersions '${{ github.event.inputs.nuke_versions }}' -IncludeWindows:('${{ github.event.inputs.include_windows }}' -eq 'true') -IncludeLinux:('${{ github.event.inputs.include_linux }}' -eq 'true') -EnableGpu:('${{ github.event.inputs.enable_gpu }}' -eq 'true') -AsJson
-          "matrix=$matrix" >> $env:GITHUB_OUTPUT
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          config = json.loads(Path("config/nuke_versions.json").read_text(encoding="utf-8"))
+          supported_versions = [entry["version"] for entry in config["versions"]]
+
+          def parse_versions(raw: str):
+              if not raw:
+                  return []
+              return [version.strip() for version in raw.split(",") if version.strip()]
+
+          versions = parse_versions(os.getenv("INPUT_NUKE_VERSIONS", "")) or supported_versions
+          unsupported = [version for version in versions if version not in supported_versions]
+          if unsupported:
+              print(
+                  "Unsupported Nuke versions requested: {}".format(", ".join(unsupported)),
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          target_flags = {
+              "windows": os.getenv("INPUT_INCLUDE_WINDOWS", "true").lower() == "true",
+              "linux": os.getenv("INPUT_INCLUDE_LINUX", "true").lower() == "true",
+          }
+
+          target_rows = {
+              "windows": {"runner_labels": ["self-hosted", "nuke", "windows"], "platform_name": "windows"},
+              "linux": {"runner_labels": ["self-hosted", "nuke", "linux"], "platform_name": "linux"},
+          }
+
+          include = []
+          for version in versions:
+              for platform_name, enabled in target_flags.items():
+                  if not enabled:
+                      continue
+                  row = dict(target_rows[platform_name])
+                  row["nuke_version"] = version
+                  include.append(row)
+
+          if not include:
+              print("At least one runtime target must be enabled.", file=sys.stderr)
+              sys.exit(1)
+
+          matrix = {"include": include}
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("matrix={}\n".format(json.dumps(matrix)))
+
+          print(json.dumps(matrix))
+          PY
 
   smoke:
     name: Runtime Smoke Nuke ${{ matrix.nuke_version }} on ${{ matrix.platform_name }}
-    needs:
-      - matrix
-      - profile
-    runs-on: ${{ fromJson(matrix.runner_labels_json) }}
+    needs: matrix
+    runs-on: ${{ fromJson(matrix.runner_labels) }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
@@ -111,10 +141,10 @@ jobs:
       - name: Run runtime smoke on Windows
         if: matrix.platform_name == 'windows'
         env:
-          TSUITE_NODE_CLASS: ${{ needs.profile.outputs.plugin_key }}
-          TSUITE_PACKAGE_NAME: ${{ needs.profile.outputs.plugin_key }}
+          TSUITE_NODE_CLASS: TVectorBlur
+          TSUITE_PACKAGE_NAME: TVectorBlur
           TSUITE_PLUGIN_ROOT: ${{ github.workspace }}\publish
-          TSUITE_ENABLE_GPU: ${{ matrix.enable_gpu && needs.profile.outputs.supports_gpu_runtime_test == 'true' && '1' || '0' }}
+          TSUITE_ENABLE_GPU: ${{ github.event.inputs.enable_gpu == 'true' && '1' || '0' }}
         shell: powershell
         run: |
           $ciHome = Join-Path $env:GITHUB_WORKSPACE ".ci-home"
@@ -127,10 +157,10 @@ jobs:
       - name: Run runtime smoke on Unix
         if: matrix.platform_name != 'windows'
         env:
-          TSUITE_NODE_CLASS: ${{ needs.profile.outputs.plugin_key }}
-          TSUITE_PACKAGE_NAME: ${{ needs.profile.outputs.plugin_key }}
+          TSUITE_NODE_CLASS: TVectorBlur
+          TSUITE_PACKAGE_NAME: TVectorBlur
           TSUITE_PLUGIN_ROOT: ${{ github.workspace }}/publish
-          TSUITE_ENABLE_GPU: ${{ matrix.enable_gpu && needs.profile.outputs.supports_gpu_runtime_test == 'true' && '1' || '0' }}
+          TSUITE_ENABLE_GPU: ${{ github.event.inputs.enable_gpu == 'true' && '1' || '0' }}
         shell: bash
         run: |
           ci_home="${GITHUB_WORKSPACE}/.ci-home"

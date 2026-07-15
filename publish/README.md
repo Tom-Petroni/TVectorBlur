@@ -1,25 +1,26 @@
 # Publish Output
 
-This directory contains the packaged plugin layout that is ready to copy into a Nuke `.nuke` environment.
+Ce dossier contient le package installeable de `TVectorBlur`, pret a etre copie
+dans un environnement `.nuke`.
 
-## Contents
+## Contenu
 
-- `TVectorBlur/`: current placeholder plugin package
-- `init.py`: bootstrap that registers the packaged plugin folder
+- `TVectorBlur/`: package Python + dossier `bin/`
+- `init.py`: bootstrap qui enregistre le package dans Nuke
 
-## Binary Layout
+## Layout des binaires
 
-Compiled binaries are expected here:
+Les binaires compiles sont attendus ici :
 
 `TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
 
-Examples:
+Exemples :
 
-- `TVectorBlur/bin/17.0/windows/x86_64/TVectorBlur.dll`
-- `TVectorBlur/bin/17.0/linux/x86_64/libTVectorBlur.so`
+- `TVectorBlur/bin/16.0/windows/x86_64/TVectorBlur.dll`
+- `TVectorBlur/bin/16.0/linux/x86_64/libTVectorBlur.so`
 
 ## Notes
 
-- This folder is refreshed by the GitHub Actions `sync_publish` job after successful matrix builds.
-- The placeholder plugin name is intentionally generic.
-- For a real node, run the scaffold script from the repository root to rename the template before shipping.
+- `publish/` reste la source de verite du package distribue aux artistes
+- les releases GitHub sont assemblees a partir de ce dossier
+- les binaires peuvent etre resynchronises depuis la CI quand on le demande

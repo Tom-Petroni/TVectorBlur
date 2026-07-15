@@ -1,56 +1,60 @@
 # CI Testing
 
-This repository now uses a 2-layer validation strategy:
+Ce repo utilise une validation en 2 couches :
 
-1. GitHub-hosted build CI
-2. Self-hosted runtime smoke CI
+1. build CI sur runners GitHub-hosted
+2. smoke runtime sur runners self-hosted avec un vrai Nuke
 
-## 1. GitHub-hosted build CI
+## 1. Build CI GitHub-hosted
 
-Workflow:
+Workflow :
 
 - `.github/workflows/nuke-build.yml`
 
-What it does:
+Ce qu'il fait :
 
-- downloads the Nuke installer for each supported `major.minor` version
-- extracts the NDK files needed to compile: `include/` + `DDImage`
-- builds the plugin on GitHub-hosted Windows/Linux runners
-- verifies that the expected binary was produced
-- reads `config/build_profile.json` to decide whether the node is `cpu`, `cuda`, or `hybrid`
+- telecharge/extrait les morceaux du SDK Nuke necessaires au build
+- lit `config/nuke_versions.json` pour la matrice des versions
+- lit `node_build_config.json` pour le profil du node
+- build les binaires CUDA sur Windows et Linux
+- verifie la presence du binaire attendu
+- recompose le package final a partir de `publish/`
+- valide l'import du package Python avec `work/scripts/validate_package_import.py`
+- publie un zip de release lors des releases
 
-What it does not prove:
+Ce que ca ne prouve pas :
 
-- that Nuke itself can launch the plugin at runtime
-- that the node can be created and rendered inside a licensed Nuke session
+- qu'un vrai Nuke licencie charge bien le plugin au runtime
+- que la creation du node et le rendu d'une frame fonctionnent dans l'application
 
-## 2. Self-hosted runtime smoke CI
+## 2. Runtime smoke sur self-hosted
 
-Workflow:
+Workflow :
 
 - `.github/workflows/nuke-runtime-smoke.yml`
 
-What it does:
+Ce qu'il fait :
 
-- launches a real Nuke executable in headless mode
-- loads the plugin from `publish/`
-- creates the node
-- renders one frame
+- lance un vrai executable Nuke en headless
+- charge le package depuis `publish/`
+- cree `TVectorBlur`
+- execute un smoke test runtime
 
-This is the workflow that proves the plugin actually works inside Nuke.
+Optionnellement, tu peux aussi activer le chemin GPU via l'input `enable_gpu`
+si ton runner dispose d'un runtime CUDA adapte.
 
-## Required self-hosted runner setup
+## Setup requis pour les runners self-hosted
 
-Each runtime runner must have:
+Chaque runner runtime doit avoir :
 
-- a valid Nuke license accessible from that machine
-- Nuke installed locally for the versions you want to test
-- GitHub Actions runner labels:
+- une licence Nuke valide
+- Nuke installe localement pour les versions voulues
+- les labels GitHub Actions :
   - `self-hosted`
   - `nuke`
-  - one OS label: `windows` or `linux`
+  - un label OS : `windows` ou `linux`
 
-Each installed Nuke version must expose an environment variable with this pattern:
+Chaque version installee doit exposer une variable d'environnement de cette forme :
 
 ```text
 NUKE_13_0_EXECUTABLE
@@ -65,44 +69,35 @@ NUKE_16_0_EXECUTABLE
 NUKE_17_0_EXECUTABLE
 ```
 
-Example on Windows:
+Exemple Windows :
 
 ```text
 NUKE_16_0_EXECUTABLE=C:\Program Files\Nuke16.0v9\Nuke16.0.exe
 ```
 
-Example on Linux:
+Exemple Linux :
 
 ```text
 NUKE_16_0_EXECUTABLE=/usr/local/Nuke16.0v9/Nuke16.0
 ```
 
-## What you need to provide
+## Recommandation pratique
 
-To test every supported OS/version combination at runtime, you need:
+Utilise GitHub-hosted CI pour :
 
-- one Windows self-hosted runner with all target Nuke versions installed
-- one Linux self-hosted runner with all target Nuke versions installed
+- valider les builds
+- valider le packaging
+- generer les binaires par version
 
-If one runner only has `16.0` and `17.0`, then only `16.0` and `17.0` can be runtime-tested on that machine.
+Utilise self-hosted runtime CI pour :
 
-## Practical recommendation
+- lancer un vrai Nuke
+- verifier le chargement du plugin
+- verifier la creation du node
+- lancer une frame de smoke test
 
-Use GitHub-hosted CI for:
+Baseline actuelle du repo :
 
-- build validation
-- packaging validation
-- per-version binary generation
-
-Use self-hosted CI for:
-
-- real Nuke launch
-- plugin load verification
-- node creation
-- frame execution smoke tests
-
-Current baseline in this repository:
-
-- plugin example: `TVectorBlur`
-- backend profile: `cpu`
-- published matrix: `windows` + `linux`
+- node : `TVectorBlur`
+- backend : `CUDA`
+- matrice publiee : `windows` + `linux`

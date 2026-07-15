@@ -1,0 +1,22 @@
+{
+  "node": {
+    "class_name": "TVectorBlur",
+    "type": "Iop",
+    "version": "2.0.1",
+    "vendor": "Thomas Petroni"
+  },
+  "build": {
+    "backend_mode": "CUDA",
+    "legacy_profile": "FullGPU",
+    "native_build_required": true,
+    "cuda_enabled": true,
+    "cuda_required": true,
+    "cuda_ci_platforms": [
+      "windows",
+      "linux"
+    ],
+    "work_root": "work",
+    "package_dir": "work/TVectorBlur",
+    "versions_config": "config/nuke_versions.json"
+  }
+}

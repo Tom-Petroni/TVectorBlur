@@ -10,7 +10,7 @@ except Exception:
     from _consts import ICON_SANITIZER_SETUP_ENV_VAR, NODE_CLASS_NAME
 
 
-def _clear_template_node_icon():
+def _clear_node_icon():
     """Keep node icon empty so icon stays in menu shelf only."""
     node = nuke.thisNode()
     if node is None or node.Class() != NODE_CLASS_NAME:
@@ -28,5 +28,5 @@ def setup_knob_changed():
     """Register one-time node setup hooks."""
     if os.getenv(ICON_SANITIZER_SETUP_ENV_VAR) == "1":
         return
-    nuke.addOnCreate(_clear_template_node_icon, nodeClass=NODE_CLASS_NAME)  # ty:ignore[unresolved-attribute]
+    nuke.addOnCreate(_clear_node_icon, nodeClass=NODE_CLASS_NAME)  # ty:ignore[unresolved-attribute]
     os.environ[ICON_SANITIZER_SETUP_ENV_VAR] = "1"

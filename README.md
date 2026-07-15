@@ -1,118 +1,101 @@
-# Nuke Plugin Template
+# TVectorBlur
 
-Generic Nuke plugin template with multi-version build automation for Windows and Linux.
+TVectorBlur est un node Nuke natif, oriente CUDA, pour produire du blur vectoriel
+avec des controles de warp, de mask et de look plus pousses qu'un simple blur
+directionnel classique.
 
-## Purpose
+## Pourquoi TVectorBlur
 
-This repository is a reusable starting point for building Nuke nodes with:
+- blur guide par vecteurs pour motion, smear et stylisation
+- execution native CUDA
+- package Python + plugin natif pret a installer dans `.nuke`
+- builds multi-versions Nuke sur Windows et Linux
 
-- native C++ or Rust/C++ plugin code
-- optional CPU, CUDA, or hybrid backends
-- GitHub Actions matrix builds across supported Nuke versions
-- packaged output ready to drop into `.nuke`
+## Structure du repo
 
-It is intentionally template-first. The repository should not be treated as a product node on its own.
-
-## Supported Build Matrix
-
-- Nuke: `13.0` -> `17.0`
-- OS: Windows, Linux
-- Architecture: `x86_64`
-
-Binary layout:
-
-`publish/<PluginName>/bin/<nuke_version>/<os>/<arch>/`
-
-Local working layout during development:
-
-`work/<PluginName>/bin/<nuke_version>/<os>/<arch>/`
-
-## Current Template Name
-
-The bundled placeholder implementation uses the generic name `TVectorBlur`.
-
-You are expected to rename it for your real node project with the scaffold command below.
-
-## Scaffold a New Node
-
-From the repository root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\Initialize-NukeTemplate.ps1 -NodeName MyNode -Backend cpu
+```text
+TVectorBlur/
+  config/         # matrice des versions Nuke supportees
+  publish/        # payload a copier dans .nuke
+  tools/          # scripts utilitaires CI/build matrix
+  work/           # source rust/c++ + scripts de validation
+  node_build_config.json
+  node.json
+  VERSION
+  CHANGELOG.md
 ```
 
-Examples:
+Fichiers importants :
 
-- CPU node: `-NodeName MyNode -Backend cpu`
-- CUDA node: `-NodeName MyNode -Backend cuda`
-- hybrid node: `-NodeName MyNode -Backend hybrid`
+- `config/nuke_versions.json`: versions et plateformes supportees
+- `node_build_config.json`: profil de build du node
+- `publish/`: package de reference pour l'installation artiste et les zips de release
+- `work/`: code source natif, package Python de travail et scripts de verification
 
-What the scaffold updates:
+## Prerequis
 
-- `config/build_profile.json`
-- `node.json`
-- `work/<PluginName>/`
-- `publish/<PluginName>/`
-- `work/crates/<plugin-name>-nuke/`
-- C++ file stems, package-qualified imports, and expected binary names
+- Nuke SDK/headers accessibles via le workflow `xtask`
+- Rust/Cargo
+- toolchain C++ compatible Nuke
+- CUDA Toolkit pour les builds natifs
 
-Detailed workflow:
+## Compiler
 
-- [work/docs/TEMPLATE_WORKFLOW.md](work/docs/TEMPLATE_WORKFLOW.md)
-
-## Local Build
+Depuis la racine du repo :
 
 ```powershell
 cd work
-cargo xtask --compile --nuke-versions 17.0 --target-platform windows --output-to-package --limit-threads
+cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads --cuda-backend
 ```
 
-Local build output is written to the source workspace first:
+Sortie locale attendue :
 
-`work/TVectorBlur/bin/17.0/windows/x86_64/TVectorBlur.dll`
+`work/TVectorBlur/bin/16.0/windows/x86_64/TVectorBlur.dll`
 
-Other targets:
+Notes :
 
-- native Linux: `--target-platform linux`
-- Windows to Linux via WSL: recommended for local Linux builds
-- Windows to Linux via Zig: `--use-zig --target-platform linux`
+- build Windows : a lancer nativement sous Windows
+- build Linux : a lancer nativement sous Linux
+- le cross-build Windows -> Linux n'est pas supporte actuellement par `xtask`
 
-## GitHub Actions
+## Build CI GitHub
 
-Main workflow:
+Le workflow principal (`.github/workflows/nuke-build.yml`) :
 
-- `.github/workflows/nuke-build.yml`
+- fait les smoke checks Python/Rust sur `push` et `pull_request`
+- lit la matrice de build depuis `config/nuke_versions.json`
+- lit le profil du node depuis `node_build_config.json`
+- build les binaires CUDA sur GitHub Actions
+- recompose le package final a partir de `publish/`
+- verifie l'import du package Python avant publication
+- genere un zip de release pret a installer dans `.nuke`
 
-It:
+Le workflow runtime (`.github/workflows/nuke-runtime-smoke.yml`) :
 
-- downloads Nuke installers and extracts the required SDK pieces
-- builds the configured versions on GitHub-hosted runners
-- writes per-job binaries into `work/<PluginName>/bin/...`
-- validates the expected package layout
-- produces a bundled install artifact
-- syncs `publish/` from validated build artifacts after successful `main` builds
+- lance un vrai Nuke headless sur runners self-hosted
+- charge le plugin depuis `publish/`
+- cree le node
+- execute un smoke test runtime
 
-Optional runtime smoke workflow:
+## Installer dans Nuke
 
-- `.github/workflows/nuke-runtime-smoke.yml`
+1. copier `publish/init.py` dans `.nuke`
+2. copier `publish/TVectorBlur/` dans le meme dossier
+3. redemarrer Nuke
 
-It requires self-hosted runners with a real Nuke installation and valid license.
+Si tu as deja un `.nuke/init.py`, tu peux juste ajouter :
 
-## Repository Layout
-
-```text
-Template-Node-Nuke/
-  config/    # build profile + version matrix
-  publish/   # install payload for .nuke
-  tools/     # scaffold + validation helpers
-  work/      # source workspace, docs, crate, scripts, xtask
+```python
+import nuke
+nuke.pluginAddPath("./TVectorBlur")
 ```
 
-## Notes
+## Verification rapide
 
-- The template infrastructure has already been validated in CI across the supported matrix.
-- New nodes should usually compile with minimal infrastructure work, but version-specific code adjustments can still be needed depending on the NDK APIs you use.
+- le menu `Nodes > TVectorBlur` apparait
+- le binaire est present dans `TVectorBlur/bin/<nuke_version>/<os>/<arch>/`
+- une release GitHub s'installe juste en dezipant le package dans `.nuke`
 
-## License
+## Licence
 
-Commercial usage is governed by `LICENSE` and `EULA.md`.
+Usage commercial soumis a la licence du repo (`LICENSE` + `EULA.md`).

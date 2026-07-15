@@ -1,27 +1,27 @@
 # Work Source
 
-Source workspace for the reusable Nuke plugin template.
+Workspace source de `TVectorBlur`.
 
 ## Structure
 
-- `crates/t-vector-blur-nuke`: current placeholder native crate
-- `xtask`: Nuke SDK fetch, build orchestration, and packaging
-- `TVectorBlur/`: current placeholder Python package
-- `docs/`: template documentation
-- `scripts/`: automation and smoke-test scripts
+- `crates/t-vector-blur-nuke`: crate native du node
+- `xtask`: fetch SDK Nuke, orchestration des builds et packaging
+- `TVectorBlur/`: package Python de travail
+- `docs/`: documentation technique
+- `scripts/`: scripts de validation et smoke tests
 
-## Typical Workflow
+## Workflow typique
 
-1. Run the scaffold script from the repository root.
-2. Replace the native implementation in the generated crate.
-3. Adjust the Python bootstrap/menu files for your node.
-4. Run local checks.
-5. Push and let GitHub Actions validate the matrix.
+1. coder dans le crate natif et le package Python `work/`
+2. lancer les checks locaux
+3. builder une cible Nuke locale
+4. verifier le package obtenu
+5. pousser et laisser la CI valider la matrice
 
 ## Quick Build
 
 ```powershell
-cargo xtask --compile --nuke-versions 17.0 --target-platform windows --output-to-package --limit-threads
+cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads --cuda-backend
 ```
 
 ## Documentation
@@ -31,4 +31,3 @@ cargo xtask --compile --nuke-versions 17.0 --target-platform windows --output-to
 - [Architecture](docs/ARCHITECTURE.md)
 - [Node Reference](docs/NODE_REFERENCE.md)
 - [Release](docs/RELEASE.md)
-- [Template Workflow](docs/TEMPLATE_WORKFLOW.md)

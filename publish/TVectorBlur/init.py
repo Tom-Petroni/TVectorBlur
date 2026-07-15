@@ -14,7 +14,7 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-_HOOKS_ENV_VAR = "NUKE_PLUGIN_TEMPLATE_SCRIPT_HOOKS_DONE"
+_HOOKS_ENV_VAR = "TVECTORBLUR_SCRIPT_HOOKS_DONE"
 
 
 def _refresh_plugin_path():

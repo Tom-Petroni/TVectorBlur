@@ -37,9 +37,6 @@ struct Args {
     #[clap(short, long, action = ArgAction::SetTrue)]
     compile: bool,
 
-    #[clap(long, action = ArgAction::SetTrue)]
-    use_zig: bool,
-
     #[clap(short, long)]
     target_platform: Option<TargetPlatform>,
 
@@ -78,7 +75,7 @@ async fn main() -> Result<()> {
     if args.compile
         && let Some(target_platform) = args.target_platform
     {
-        compile_nuke(&args.nuke_versions, target_platform, args.limit_threads, args.use_zig)
+        compile_nuke(&args.nuke_versions, target_platform, args.limit_threads)
             .await?;
     }
 

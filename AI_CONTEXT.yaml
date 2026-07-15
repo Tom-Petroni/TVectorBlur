@@ -1,0 +1,39 @@
+node:
+  class_name: TVectorBlur
+  display_name: TVectorBlur
+  type: Iop
+  version: 2.0.1
+  brief: "CUDA-driven vector blur node for Nuke."
+  vendor: Thomas Petroni
+  vendor_url: https://www.linkedin.com/in/thomas-petroni/
+  profile: FullGPU
+  backend_mode: CUDA
+
+naming:
+  node_upper: TVECTORBLUR
+  node_lower: tvectorblur
+  crate_name: t-vector-blur-nuke
+  rust_lib_name: t_vector_blur_nuke
+
+paths:
+  work_root: work
+  publish_root: publish
+  native_crate: work/crates/t-vector-blur-nuke
+  python_package_work: work/TVectorBlur
+  python_package_publish: publish/TVectorBlur
+  node_build_config: node_build_config.json
+  versions_config: config/nuke_versions.json
+
+build:
+  main_command: cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads --cuda-backend
+  fetch_command: cargo xtask --fetch-nuke --nuke-versions 16.0 --target-platform windows --limit-threads
+  native_build_required: true
+  cuda_enabled: true
+  cuda_required: true
+
+capabilities:
+  cuda_capable_types:
+    - Iop
+  native_types:
+    - Iop
+  python_types: []

@@ -1064,7 +1064,7 @@
       }
     };
 
-    hash.append(0x544E4F49534532ull); // Stable template hash salt.
+    hash.append(0x544E4F49534532ull); // Stable node hash salt.
     hash.append(static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(this)));
     hash.append(node_name());
     hash.append(outputContext().view());

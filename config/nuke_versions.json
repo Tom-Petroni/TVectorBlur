@@ -1,42 +1,81 @@
 {
-  "supported_versions": [
-    "13.0",
-    "13.1",
-    "13.2",
-    "14.0",
-    "14.1",
-    "15.0",
-    "15.1",
-    "15.2",
-    "16.0",
-    "17.0"
-  ],
-  "build_targets": [
+  "versions": [
     {
-      "runner": "ubuntu-latest",
-      "target_platform": "linux",
-      "os_name": "linux",
-      "arch_name": "x86_64",
-      "lib_ext": "so",
-      "lib_prefix": "lib"
+      "version": "13.0",
+      "full_version_hint": "13.0v10",
+      "cpp_standard": 14,
+      "linux_use_cxx11_abi": false
     },
     {
-      "runner": "windows-2022",
-      "target_platform": "windows",
-      "os_name": "windows",
-      "arch_name": "x86_64",
-      "lib_ext": "dll",
-      "lib_prefix": ""
+      "version": "13.1",
+      "full_version_hint": "13.1v5",
+      "cpp_standard": 14,
+      "linux_use_cxx11_abi": false
+    },
+    {
+      "version": "13.2",
+      "full_version_hint": "13.2v9",
+      "cpp_standard": 14,
+      "linux_use_cxx11_abi": false
+    },
+    {
+      "version": "14.0",
+      "full_version_hint": "14.0v8",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": false
+    },
+    {
+      "version": "14.1",
+      "full_version_hint": "14.1v7",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
+    },
+    {
+      "version": "15.0",
+      "full_version_hint": "15.0v7",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
+    },
+    {
+      "version": "15.1",
+      "full_version_hint": "15.1v7",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
+    },
+    {
+      "version": "15.2",
+      "full_version_hint": "15.2v2",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
+    },
+    {
+      "version": "16.0",
+      "full_version_hint": "16.0v2",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
+    },
+    {
+      "version": "17.0",
+      "full_version_hint": "17.0v2",
+      "cpp_standard": 17,
+      "linux_use_cxx11_abi": true
     }
   ],
-  "runtime_targets": {
-    "windows": {
-      "runner_labels": ["self-hosted", "nuke", "windows"],
-      "platform_name": "windows"
-    },
-    "linux": {
-      "runner_labels": ["self-hosted", "nuke", "linux"],
-      "platform_name": "linux"
-    }
+  "platforms": {
+    "cpu": [],
+    "cuda": [
+      {
+        "target_platform": "windows",
+        "package_os": "windows",
+        "package_arch": "x86_64",
+        "runner": "windows-latest"
+      },
+      {
+        "target_platform": "linux",
+        "package_os": "linux",
+        "package_arch": "x86_64",
+        "runner": "ubuntu-22.04"
+      }
+    ]
   }
 }

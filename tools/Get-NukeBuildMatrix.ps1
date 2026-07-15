@@ -1,117 +1,99 @@
 param(
-    [ValidateSet("build", "runtime")]
-    [string]$Mode = "build",
-
-    [string]$ConfigPath = "config/nuke_versions.json",
-
-    [string]$SelectedVersions = "",
-
-    [bool]$IncludeWindows = $true,
-
-    [bool]$IncludeLinux = $true,
-
-    [bool]$EnableGpu = $false,
-
+    [string]$VersionsConfigPath = "config/nuke_versions.json",
+    [string]$NodeConfigPath = "node_build_config.json",
+    [string[]]$RequestedVersions = @(),
     [switch]$AsJson
 )
 
 $ErrorActionPreference = "Stop"
-
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (
-    -not [System.IO.Path]::IsPathRooted($ConfigPath) `
-    -and -not (Test-Path -LiteralPath $ConfigPath)
-) {
-    $ConfigPath = Join-Path $repoRoot $ConfigPath
+if (-not [System.IO.Path]::IsPathRooted($VersionsConfigPath)) {
+    $VersionsConfigPath = Join-Path $repoRoot $VersionsConfigPath
 }
-function Parse-VersionList {
+if (-not [System.IO.Path]::IsPathRooted($NodeConfigPath)) {
+    $NodeConfigPath = Join-Path $repoRoot $NodeConfigPath
+}
+
+function Get-MatrixEntry {
     param(
-        [string]$Raw,
-        [string[]]$DefaultVersions
+        [pscustomobject]$Platform,
+        [pscustomobject]$Version,
+        [string]$BackendMode
     )
 
-    if ([string]::IsNullOrWhiteSpace($Raw)) {
-        return $DefaultVersions
+    [pscustomobject]@{
+        nuke_version    = $Version.version
+        full_version    = $Version.full_version_hint
+        cpp_standard    = $Version.cpp_standard
+        target_platform = $Platform.target_platform
+        package_os      = $Platform.package_os
+        package_arch    = $Platform.package_arch
+        runner          = $Platform.runner
+        backend_mode    = $BackendMode
+        lib_ext         = if ($Platform.package_os -eq "windows") { "dll" } elseif ($Platform.package_os -eq "linux") { "so" } else { "dylib" }
+        lib_prefix      = if ($Platform.package_os -eq "windows") { "" } else { "lib" }
     }
-
-    $parsed = @(
-        $Raw.Split(",") |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-    )
-
-    if ($parsed.Count -eq 0) {
-        return $DefaultVersions
-    }
-
-    return $parsed
 }
 
-$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-$supportedVersions = @($config.supported_versions)
-$versions = @(Parse-VersionList -Raw $SelectedVersions -DefaultVersions $supportedVersions)
+$versionsConfig = Get-Content -LiteralPath $VersionsConfigPath -Raw | ConvertFrom-Json
+$nodeConfig = Get-Content -LiteralPath $NodeConfigPath -Raw | ConvertFrom-Json
+$backendMode = [string]$nodeConfig.build.backend_mode
+$nativeBuildRequired = [bool]$nodeConfig.build.native_build_required
+$allVersions = @($versionsConfig.versions)
 
-$unsupported = @($versions | Where-Object { $_ -notin $supportedVersions })
-if ($unsupported.Count -gt 0) {
-    throw "Unsupported Nuke versions requested: $($unsupported -join ', ')"
-}
-
-if ($Mode -eq "build") {
-    $include = @()
-    foreach ($version in $versions) {
-        foreach ($target in $config.build_targets) {
-            if (-not $IncludeWindows -and $target.target_platform -eq "windows") {
-                continue
-            }
-            if (-not $IncludeLinux -and $target.target_platform -eq "linux") {
-                continue
-            }
-
-            $include += [pscustomobject]@{
-                runner          = $target.runner
-                target_platform = $target.target_platform
-                os_name         = $target.os_name
-                arch_name       = $target.arch_name
-                lib_ext         = $target.lib_ext
-                lib_prefix      = $target.lib_prefix
-                nuke_version    = $version
-            }
+if ($RequestedVersions.Count -gt 0) {
+    $requestedLookup = @{}
+    foreach ($requestedVersion in $RequestedVersions) {
+        $trimmed = [string]$requestedVersion
+        if (-not [string]::IsNullOrWhiteSpace($trimmed)) {
+            $requestedLookup[$trimmed.Trim()] = $true
         }
     }
 
-    $result = [pscustomobject]@{
-        include = $include
+    $missingVersions = @()
+    foreach ($requestedVersion in $requestedLookup.Keys) {
+        if (-not ($allVersions.version -contains $requestedVersion)) {
+            $missingVersions += $requestedVersion
+        }
     }
+
+    if ($missingVersions.Count -gt 0) {
+        throw "Unsupported Nuke versions requested: $($missingVersions -join ', ')"
+    }
+
+    $selectedVersions = @($allVersions | Where-Object { $requestedLookup.ContainsKey($_.version) })
 } else {
-    $include = @()
-    foreach ($version in $versions) {
-        if ($IncludeWindows) {
-            $target = $config.runtime_targets.windows
-            $include += [pscustomobject]@{
-                runner_labels_json = (@($target.runner_labels) | ConvertTo-Json -Compress)
-                platform_name      = $target.platform_name
-                nuke_version       = $version
-                enable_gpu         = $EnableGpu
-            }
-        }
+    $selectedVersions = $allVersions
+}
 
-        if ($IncludeLinux) {
-            $target = $config.runtime_targets.linux
-            $include += [pscustomobject]@{
-                runner_labels_json = (@($target.runner_labels) | ConvertTo-Json -Compress)
-                platform_name      = $target.platform_name
-                nuke_version       = $version
-                enable_gpu         = $EnableGpu
-            }
+$cpuEntries = @()
+$cudaEntries = @()
+
+if ($nativeBuildRequired -and $backendMode -eq "CPU") {
+    foreach ($version in $selectedVersions) {
+        foreach ($platform in $versionsConfig.platforms.cpu) {
+            $cpuEntries += Get-MatrixEntry -Platform $platform -Version $version -BackendMode $backendMode
         }
     }
+}
 
-    if ($include.Count -eq 0) {
-        throw "At least one runtime target must be enabled."
+if ($nativeBuildRequired -and ($backendMode -eq "CUDA" -or $backendMode -eq "Hybrid")) {
+    foreach ($version in $selectedVersions) {
+        foreach ($platform in $versionsConfig.platforms.cuda) {
+            $cudaEntries += Get-MatrixEntry -Platform $platform -Version $version -BackendMode $backendMode
+        }
     }
+}
 
-    $result = [pscustomobject]@{
-        include = $include
+$result = [pscustomobject]@{
+    native_build_required = $nativeBuildRequired
+    has_cpu = $cpuEntries.Count -gt 0
+    has_cuda = $cudaEntries.Count -gt 0
+    cpu = [pscustomobject]@{
+        include = $cpuEntries
+    }
+    cuda = [pscustomobject]@{
+        include = $cudaEntries
     }
 }
 

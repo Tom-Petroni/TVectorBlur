@@ -1621,7 +1621,7 @@ dependencies = [
 
 [[package]]
 name = "t-vector-blur-nuke"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "cc",
 ]
@@ -2232,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "anyhow",
  "astral-tokio-tar",

@@ -1,23 +1,20 @@
 # Node Reference
 
-This file is intentionally generic.
+## Overview
 
-The bundled implementation is only a placeholder so the template has a concrete package, binary layout, and CI target to validate.
+TVectorBlur est un node Nuke natif, oriente CUDA, pour produire du blur
+vectoriel avec des controles avances de warp, de mask et de faconnage du rendu.
 
-When creating a real node from this template, replace this document with:
+## Current Scope
 
-- the node purpose
-- inputs and outputs
-- parameter descriptions
-- usage notes
-- compatibility caveats
+Le repo couvre aujourd'hui :
 
-Recommended structure:
+- un `Iop` natif charge par Nuke
+- un package Python `TVectorBlur` pour le bootstrap/menu
+- un packaging multi-version Windows/Linux
+- des comportements optionnels bases sur warp, mask et transformations d'espace
 
-1. Overview
-2. Inputs
-3. Outputs
-4. Parameters
-5. Usage examples
-6. Limitations
-7. Version-specific notes
+## Notes
+
+- la doc artiste plus detaillee des parametres UI pourra etre enrichie quand le node sera stabilise
+- la reference technique du build et du packaging est dans `BUILD.md` et `RELEASE.md`

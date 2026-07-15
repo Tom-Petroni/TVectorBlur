@@ -2,7 +2,7 @@
 
 ## Overview
 
-The template is split into three layers:
+Le repo est split en trois couches :
 
 - a native plugin crate
 - a Python package loaded by Nuke
@@ -44,15 +44,15 @@ Responsibilities:
 ## Runtime Flow
 
 1. Nuke loads the top-level `init.py`.
-2. The template package is added to the Nuke plugin path.
+2. The TVectorBlur package is added to the Nuke plugin path.
 3. The package loader resolves the correct binary folder for the running session.
 4. Nuke loads the native plugin binary.
 5. The menu bootstrap exposes the node class in the UI.
 
 ## Build Flow
 
-1. `xtask` reads the build profile and requested target versions.
+1. `xtask` uses `node_build_config.json` and `config/nuke_versions.json`.
 2. Missing Nuke SDK artifacts are downloaded and extracted.
 3. The native crate is compiled for the selected target platform.
 4. The binary is copied into the package layout.
-5. Validation scripts confirm the expected matrix and folder structure.
+5. Validation scripts confirm the expected matrix and package import behavior.

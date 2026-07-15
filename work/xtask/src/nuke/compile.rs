@@ -27,7 +27,6 @@ pub async fn compile_nuke(
     versions: &[String],
     target: TargetPlatform,
     limit_threads: bool,
-    _use_zig: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut missing_versions: Vec<String> = Vec::new();
     for version in versions {
