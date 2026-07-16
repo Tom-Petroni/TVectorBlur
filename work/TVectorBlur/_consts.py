@@ -10,7 +10,7 @@ INSTALLATION_PATH = str(PACKAGE_PATH)
 RESOURCES_PATH = str(PACKAGE_PATH / "resources")
 
 PRODUCT_NAME = "TVectorBlur"
-PRODUCT_VERSION = "2.0.2"
+PRODUCT_VERSION = "2.0.3"
 PRODUCT_RELEASE_YEAR = "2026"
 PRODUCT_VENDOR = "Thomas Petroni"
 PRODUCT_VENDOR_URL = "https://www.linkedin.com/in/thomas-petroni/"

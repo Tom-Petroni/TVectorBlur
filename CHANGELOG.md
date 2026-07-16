@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-16 -
+2.0.3
+- Removed the TVectorBlur runtime performance logs from the Nuke console.
+- Promoted TVectorBlur to stable release metadata.
+
 ## 2026-07-15 -
 2.0.2
 - Fixed the release detector to read VERSION from the repository root in GitHub Actions.
