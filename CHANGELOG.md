@@ -1,6 +1,11 @@
 # Changelog
 
 ## 2026-07-16 -
+2.0.4
+- Fixed Linux GitHub Actions builds by installing the missing GLU development package on runners.
+- Carries forward the TVectorBlur console log cleanup from 2.0.3.
+
+## 2026-07-16 -
 2.0.3
 - Removed the TVectorBlur runtime performance logs from the Nuke console.
 - Promoted TVectorBlur to stable release metadata.

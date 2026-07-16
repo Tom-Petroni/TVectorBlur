@@ -721,7 +721,7 @@ public:
     Text_knob(
         f,
         "",
-        "TVectorBlur 2.0.3 - 2026 - <a href=\"www.linkedin.com/in/thomas-petroni\"><font color=\"#55aaff\"><u>Thomas Petroni</u></font></a>");
+        "TVectorBlur 2.0.4 - 2026 - <a href=\"www.linkedin.com/in/thomas-petroni\"><font color=\"#55aaff\"><u>Thomas Petroni</u></font></a>");
   }
 };
 

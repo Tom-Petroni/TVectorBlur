@@ -174,7 +174,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config p7zip-full file patchelf ca-certificates
+          sudo apt-get install -y build-essential pkg-config p7zip-full file patchelf ca-certificates libglu1-mesa-dev
 
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
@@ -263,7 +263,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config p7zip-full file patchelf ca-certificates
+          sudo apt-get install -y build-essential pkg-config p7zip-full file patchelf ca-certificates libglu1-mesa-dev
 
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
