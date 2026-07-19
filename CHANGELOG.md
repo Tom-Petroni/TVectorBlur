@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-19 -
+2.0.5
+- Added local NukeDockerBuild CUDA build wrappers for Windows/Linux release matrices.
+- Published local Windows and Linux binaries for Nuke 13.0 through 17.0.
+
 ## 2026-07-16 -
 2.0.4
 - Fixed Linux GitHub Actions builds by installing the missing GLU development package on runners.

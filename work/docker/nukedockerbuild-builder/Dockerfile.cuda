@@ -1,0 +1,32 @@
+ARG CUDA_IMAGE=nvidia/cuda:12.6.3-devel-ubi8
+ARG BASE_IMAGE=rockylinux:8
+FROM ${CUDA_IMAGE} AS cuda
+
+FROM ${BASE_IMAGE}
+
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+        apt-get update; \
+        apt-get install -y ca-certificates cmake curl g++ gcc make ninja-build python3; \
+        rm -rf /var/lib/apt/lists/*; \
+    elif command -v dnf >/dev/null 2>&1; then \
+        dnf install -y dnf-plugins-core || true; \
+        dnf config-manager --set-enabled powertools || dnf config-manager --set-enabled PowerTools || dnf config-manager --set-enabled devel || true; \
+        dnf install -y ca-certificates gcc gcc-c++ make ninja-build python3; \
+        dnf clean all; \
+        rm -rf /var/cache/dnf; \
+    elif command -v yum >/dev/null 2>&1; then \
+        yum install -y ca-certificates gcc gcc-c++ make ninja-build python3; \
+        yum clean all; \
+        rm -rf /var/cache/yum; \
+    else \
+        echo "Unsupported package manager in base image" >&2; \
+        exit 1; \
+    fi
+
+COPY --from=cuda /usr/local/cuda /usr/local/cuda
+
+ENV CUDA_PATH=/usr/local/cuda
+ENV CUDAToolkit_ROOT=/usr/local/cuda
+ENV PATH=/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64

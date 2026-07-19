@@ -1,5 +1,6 @@
 # Build outputs
 /work/target/
+/work/build/
 /.artifact-stage/
 /dist/
 
@@ -27,3 +28,4 @@
 # Local temp/debug files
 *.log
 *.tmp
+*.exit

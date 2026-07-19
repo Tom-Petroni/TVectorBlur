@@ -20,6 +20,20 @@ Workspace source de `TVectorBlur`.
 
 ## Quick Build
 
+Depuis la racine du repo, avec Windows natif + Linux Docker/WSL2 :
+
+```powershell
+.\work\scripts\build_with_nukedockerbuild.ps1 -NukeVersions 17.0 -Platforms windows,linux -ValidatePackage
+```
+
+Options utiles :
+
+- `-SkipBaseImageBuild`: reutilise uniquement les images NukeDockerBuild locales
+- `-RebuildBuilderImage`: reconstruit l'image `tvectorblur-builder:*`
+- `-CudaArchitectures "75,86,89,90"`: ajuste les architectures CUDA CMake
+
+Build natif manuel depuis `work/` :
+
 ```powershell
 cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads --cuda-backend
 ```

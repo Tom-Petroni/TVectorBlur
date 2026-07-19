@@ -2,7 +2,7 @@ node:
   class_name: TVectorBlur
   display_name: TVectorBlur
   type: Iop
-  version: 2.0.4
+  version: 2.0.5
   brief: "CUDA-driven vector blur node for Nuke."
   vendor: Thomas Petroni
   vendor_url: https://www.linkedin.com/in/thomas-petroni/

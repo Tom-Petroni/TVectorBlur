@@ -44,6 +44,20 @@ Fichiers importants :
 Depuis la racine du repo :
 
 ```powershell
+.\work\scripts\build_with_nukedockerbuild.ps1 -NukeVersions 17.0 -Platforms windows,linux -ValidatePackage
+```
+
+Ce flux local est hybride :
+
+- Windows : build natif avec Visual Studio Build Tools + CUDA Toolkit
+- Linux : build CUDA dans Docker/WSL2 via `NukeDockerBuild`
+
+`TVectorBlur` est CUDA-only, donc l'option `-CudaBackend` est acceptee par
+compatibilite avec les autres nodes mais n'est pas necessaire.
+
+Build natif manuel :
+
+```powershell
 cd work
 cargo xtask --compile --nuke-versions 16.0 --target-platform windows --output-to-package --limit-threads --cuda-backend
 ```

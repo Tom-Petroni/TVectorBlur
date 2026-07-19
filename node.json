@@ -1,7 +1,7 @@
 {
   "key": "TVectorBlur",
   "label": "TVectorBlur",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "status": "stable",
   "class_name": "TVectorBlur",
   "bootstrap_module": "TVectorBlur.init",
